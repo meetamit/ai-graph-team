@@ -5,8 +5,12 @@ module.exports = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  Xtheme: {
+  theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-geist)'],
+        mono: ['var(--font-geist-mono)'],
+      },
       colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',

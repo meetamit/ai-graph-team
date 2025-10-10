@@ -49,6 +49,24 @@ export default defineConfig({
       name: 'setup:auth',
       testMatch: /auth.setup.ts/,
     },
+    {
+      name: 'auth',
+      testMatch: /auth.test.ts/,
+      dependencies: [],
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'graph',
+      testMatch: /graph.test.ts/,
+      dependencies: ['setup:auth'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/session.json',
+      },
+    },
+
   ],
 
   /* Run your local dev server before starting the tests */

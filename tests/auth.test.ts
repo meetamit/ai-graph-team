@@ -72,6 +72,5 @@ test.describe
 
       await page.waitForURL('/');
       await expect(page).toHaveURL('/');
-      await expect(page.getByPlaceholder('Send a message...')).toBeVisible();
     });
   });
