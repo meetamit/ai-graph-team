@@ -3,7 +3,7 @@ import { z } from "zod";
 export const NodeSchema = z.object({
   id: z.string(),
   label: z.string().optional(),
-  data: z.record(z.unknown()),
+  data: z.record(z.string(), z.unknown()),
   position: z.object({
     x: z.number(),
     y: z.number()
@@ -15,7 +15,7 @@ export const EdgeSchema = z.object({
   source: z.string(),
   target: z.string(),
   label: z.string().optional(),
-  data: z.record(z.any()).optional(),
+  data: z.record(z.string(), z.any()).optional(),
 });
 
 export const GraphSchema = z.object({
