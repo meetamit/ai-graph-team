@@ -1,0 +1,648 @@
+{
+  "name": "Self Debating",
+  "nodes": [
+    {
+      "id": "user_input",
+      "name": "User Inputs",
+      "type": "input",
+      "description": "Decision brief and evaluation frame provided by the user.",
+      "inputs": {
+        "proposal": "Concise statement of the decision to make. Example: 'Adopt library X for front-end state management in Q4.'",
+        "alternatives": [
+          "Option A",
+          "Option B",
+          "Status Quo"
+        ],
+        "decision_context": {
+          "scope": "Team or org scope affected",
+          "time_horizon": "Near-term vs long-term emphasis",
+          "dependencies": [
+            "Backend Y",
+            "Browser support Z"
+          ]
+        },
+        "criteria": [
+          {
+            "name": "Developer Productivity",
+            "weight": 0.3
+          },
+          {
+            "name": "Performance",
+            "weight": 0.25
+          },
+          {
+            "name": "Reliability",
+            "weight": 0.2
+          },
+          {
+            "name": "Maintainability",
+            "weight": 0.15
+          },
+          {
+            "name": "Hiring/Community",
+            "weight": 0.1
+          }
+        ],
+        "constraints": [
+          "No breaking changes for customers this quarter",
+          "Support SSR and React 18",
+          "Security review required"
+        ],
+        "risk_appetite": "Low, medium, or high",
+        "stakeholders": [
+          {
+            "role": "Frontend Lead",
+            "concerns": [
+              "migration cost",
+              "learning curve"
+            ]
+          },
+          {
+            "role": "SRE",
+            "concerns": [
+              "operational risk",
+              "observability"
+            ]
+          }
+        ],
+        "style_guidelines": "Tone for the final memo, e.g., 'executive crisp' or 'engineering deep dive'",
+        "word_limits": {
+          "arguments": 120,
+          "summary": 120,
+          "memo": 600
+        }
+      },
+      "outputs": {
+        "frame": {
+          "proposal": "{{inputs.proposal}}",
+          "alternatives": "{{inputs.alternatives}}",
+          "decision_context": "{{inputs.decision_context}}",
+          "criteria": "{{inputs.criteria}}",
+          "constraints": "{{inputs.constraints}}",
+          "risk_appetite": "{{inputs.risk_appetite}}",
+          "stakeholders": "{{inputs.stakeholders}}",
+          "style_guidelines": "{{inputs.style_guidelines}}",
+          "word_limits": "{{inputs.word_limits}}"
+        }
+      }
+    },
+    {
+      "id": "position_for",
+      "name": "Position — For",
+      "type": "llm",
+      "description": "Construct the strongest possible case in favor of the proposal.",
+      "model": "gpt-5-turbo",
+      "temperature": 0.4,
+      "inputs": {
+        "frame": "{{user_input.outputs.frame}}"
+      },
+      "prompt_template": "You are arguing FOR the proposal:\n{{frame.proposal}}\nContext: {{frame.decision_context}}\nConstraints: {{frame.constraints}}\nCriteria and weights: {{frame.criteria}}\nRisk appetite: {{frame.risk_appetite}}\nStakeholders: {{frame.stakeholders}}\nWrite the strongest pro argument within {{frame.word_limits.arguments}} words. Avoid external facts that are unverifiable here; reason from first principles and the provided context. Output JSON only: {\"argsFor\":[{\"claim\":\"...\",\"rationale\":\"...\",\"criteria_impacts\":[{\"criterion\":\"name\",\"direction\":\"positive|neutral\",\"magnitude\":\"low|med|high\",\"reason\":\"...\"}],\"assumptions\":[\"...\"],\"risks\":[\"...\"]}],\"top_line\":\"one-sentence summary\"}.",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "argsFor": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "claim": {
+                  "type": "string"
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "criteria_impacts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "criterion": {
+                        "type": "string"
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": [
+                          "positive",
+                          "neutral",
+                          "negative"
+                        ]
+                      },
+                      "magnitude": {
+                        "type": "string",
+                        "enum": [
+                          "low",
+                          "med",
+                          "high"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "criterion",
+                      "direction",
+                      "magnitude",
+                      "reason"
+                    ]
+                  }
+                },
+                "assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "risks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "claim",
+                "rationale",
+                "criteria_impacts"
+              ]
+            }
+          },
+          "top_line": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "argsFor",
+          "top_line"
+        ]
+      }
+    },
+    {
+      "id": "position_against",
+      "name": "Position — Against",
+      "type": "llm",
+      "description": "Construct the strongest possible case against the proposal.",
+      "model": "gpt-5-turbo",
+      "temperature": 0.4,
+      "inputs": {
+        "frame": "{{user_input.outputs.frame}}"
+      },
+      "prompt_template": "You are arguing AGAINST the proposal:\n{{frame.proposal}}\nContext: {{frame.decision_context}}\nConstraints: {{frame.constraints}}\nCriteria and weights: {{frame.criteria}}\nRisk appetite: {{frame.risk_appetite}}\nStakeholders: {{frame.stakeholders}}\nWrite the strongest con argument within {{frame.word_limits.arguments}} words. Avoid unverifiable external facts; reason from the given frame. Output JSON only: {\"argsAgainst\":[{\"claim\":\"...\",\"rationale\":\"...\",\"criteria_impacts\":[{\"criterion\":\"name\",\"direction\":\"negative|neutral|positive\",\"magnitude\":\"low|med|high\",\"reason\":\"...\"}],\"assumptions\":[\"...\"],\"risks\":[\"...\"]}],\"top_line\":\"one-sentence summary\"}.",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "argsAgainst": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "claim": {
+                  "type": "string"
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "criteria_impacts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "criterion": {
+                        "type": "string"
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": [
+                          "positive",
+                          "neutral",
+                          "negative"
+                        ]
+                      },
+                      "magnitude": {
+                        "type": "string",
+                        "enum": [
+                          "low",
+                          "med",
+                          "high"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "criterion",
+                      "direction",
+                      "magnitude",
+                      "reason"
+                    ]
+                  }
+                },
+                "assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "risks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "claim",
+                "rationale",
+                "criteria_impacts"
+              ]
+            }
+          },
+          "top_line": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "argsAgainst",
+          "top_line"
+        ]
+      }
+    },
+    {
+      "id": "judge_synthesis",
+      "name": "Judge and Synthesis",
+      "type": "llm",
+      "description": "Compare For and Against, score by criteria, and produce a tentative recommendation.",
+      "model": "gpt-5-turbo",
+      "temperature": 0.2,
+      "inputs": {
+        "frame": "{{user_input.outputs.frame}}",
+        "for_case": "{{position_for.outputs}}",
+        "against_case": "{{position_against.outputs}}"
+      },
+      "prompt_template": "Act as a neutral judge. Compare the FOR and AGAINST cases for the proposal:\n{{frame.proposal}}\nWeigh arguments by the provided criteria and weights. Identify key assumptions, areas of agreement, and true trade-offs. Output JSON only with:\n{\"scorecard\":[{\"criterion\":\"name\",\"weight\":x.xx,\"score_for\":-1..1,\"score_against\":-1..1,\"net\":-1..1,\"notes\":\"...\"}],\"tradeoffs\":[\"...\"],\"uncertainties\":[\"...\"],\"tentativeRec\":{\"decision\":\"approve|reject|pilot|defer\",\"rationale\":\"...\",\"dependencies\":[\"...\"],\"assumptions\":[\"...\"]}}.\nScores: -1 harms, 0 neutral, +1 helps.",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "scorecard": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "criterion": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "score_for": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1
+                },
+                "score_against": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1
+                },
+                "net": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "criterion",
+                "weight",
+                "score_for",
+                "score_against",
+                "net"
+              ]
+            }
+          },
+          "tradeoffs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "uncertainties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tentativeRec": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "approve",
+                  "reject",
+                  "pilot",
+                  "defer"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "dependencies": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "decision",
+              "rationale"
+            ]
+          }
+        },
+        "required": [
+          "scorecard",
+          "tentativeRec"
+        ]
+      }
+    },
+    {
+      "id": "red_team",
+      "name": "Red Team Critique",
+      "type": "llm",
+      "description": "Attack the tentative recommendation to reveal weaknesses, blindspots, and failure modes.",
+      "model": "gpt-5-turbo",
+      "temperature": 0.5,
+      "inputs": {
+        "frame": "{{user_input.outputs.frame}}",
+        "for_case": "{{position_for.outputs}}",
+        "against_case": "{{position_against.outputs}}",
+        "judge": "{{judge_synthesis.outputs}}"
+      },
+      "prompt_template": "You are the Red Team. Stress-test the tentative recommendation.\nProposal: {{frame.proposal}}\nTentative decision: {{judge.tentativeRec}}\nConstraints: {{frame.constraints}}\nRisk appetite: {{frame.risk_appetite}}\nProduce JSON only: {\"vulnerabilities\":[{\"title\":\"...\",\"description\":\"...\",\"severity\":\"low|med|high\",\"trigger_conditions\":[\"...\"],\"blast_radius\":\"team|org|customer\",\"early_warning_indicators\":[\"...\"],\"mitigation_ideas\":[\"...\"]}],\"missing_info\":[\"...\"],\"hard_questions\":[\"...\"]}. Be concrete. Avoid repeating generic risks unless tailored to this context.",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "vulnerabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "med",
+                    "high"
+                  ]
+                },
+                "trigger_conditions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "blast_radius": {
+                  "type": "string",
+                  "enum": [
+                    "team",
+                    "org",
+                    "customer"
+                  ]
+                },
+                "early_warning_indicators": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "mitigation_ideas": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "title",
+                "description",
+                "severity",
+                "mitigation_ideas"
+              ]
+            }
+          },
+          "missing_info": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hard_questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "vulnerabilities"
+        ]
+      }
+    },
+    {
+      "id": "finalize",
+      "name": "Finalize Decision and Memo",
+      "type": "llm",
+      "description": "Integrate Red Team findings into the final position, with mitigations and an executive summary.",
+      "model": "gpt-5-turbo",
+      "temperature": 0.3,
+      "inputs": {
+        "frame": "{{user_input.outputs.frame}}",
+        "judge": "{{judge_synthesis.outputs}}",
+        "red_team": "{{red_team.outputs}}"
+      },
+      "prompt_template": "Produce the final position incorporating Red Team findings.\nFrame: {{frame}}\nJudge synthesis: {{judge}}\nRed Team: {{red_team}}\nOutput JSON only with:\n{\"finalRec\":{\"decision\":\"approve|reject|pilot|defer\",\"rationale\":\"...\",\"residual_risks\":[{\"risk\":\"...\",\"owner\":\"role\",\"status\":\"accepted|mitigated|transferred\",\"mitigation\":\"...\",\"deadline\":\"YYYY-MM-DD\"}],\"next_steps\":[{\"step\":\"...\",\"owner\":\"role\",\"due\":\"YYYY-MM-DD\"}],\"success_metrics\":[{\"metric\":\"...\",\"target\":\"...\"}]},\"executive_summary\":\"<= {{frame.word_limits.summary}} words\",\"decision_memo\":\"<= {{frame.word_limits.memo}} words, align with style_guidelines\"}.",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "finalRec": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "approve",
+                  "reject",
+                  "pilot",
+                  "defer"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "residual_risks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "risk": {
+                      "type": "string"
+                    },
+                    "owner": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "accepted",
+                        "mitigated",
+                        "transferred"
+                      ]
+                    },
+                    "mitigation": {
+                      "type": "string"
+                    },
+                    "deadline": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "risk",
+                    "owner",
+                    "status"
+                  ]
+                }
+              },
+              "next_steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "step": {
+                      "type": "string"
+                    },
+                    "owner": {
+                      "type": "string"
+                    },
+                    "due": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "step",
+                    "owner"
+                  ]
+                }
+              },
+              "success_metrics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "metric": {
+                      "type": "string"
+                    },
+                    "target": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "metric",
+                    "target"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "decision",
+              "rationale"
+            ]
+          },
+          "executive_summary": {
+            "type": "string"
+          },
+          "decision_memo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "finalRec",
+          "executive_summary",
+          "decision_memo"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "user_input",
+      "to": "position_for",
+      "reason": "Frame provides context and constraints for the pro case."
+    },
+    {
+      "from": "user_input",
+      "to": "position_against",
+      "reason": "Frame provides context and constraints for the con case."
+    },
+    {
+      "from": "position_for",
+      "to": "judge_synthesis",
+      "reason": "Judge compares both cases."
+    },
+    {
+      "from": "position_against",
+      "to": "judge_synthesis",
+      "reason": "Judge compares both cases."
+    },
+    {
+      "from": "user_input",
+      "to": "judge_synthesis",
+      "reason": "Criteria weights and context drive scoring."
+    },
+    {
+      "from": "judge_synthesis",
+      "to": "red_team",
+      "reason": "Red Team attacks the tentative recommendation."
+    },
+    {
+      "from": "position_for",
+      "to": "red_team",
+      "reason": "Red Team references arguments made by the pro case."
+    },
+    {
+      "from": "position_against",
+      "to": "red_team",
+      "reason": "Red Team references arguments made by the con case."
+    },
+    {
+      "from": "red_team",
+      "to": "finalize",
+      "reason": "Final decision integrates vulnerabilities and mitigations."
+    },
+    {
+      "from": "judge_synthesis",
+      "to": "finalize",
+      "reason": "Final decision starts from judged trade-offs and scorecard."
+    },
+    {
+      "from": "user_input",
+      "to": "finalize",
+      "reason": "Style guidelines, stakeholders, and constraints shape the final memo."
+    }
+  ]
+}
