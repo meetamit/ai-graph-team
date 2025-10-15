@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/dev.ts",
-    "worker": "npx ts-node-dev src/worker.ts",
+    "worker": "npx ts-node-dev --watch ./src/workflows src/worker.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },

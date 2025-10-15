@@ -11,6 +11,8 @@ import {
   type User,
   graph,
   type Graph,
+  graphRun,
+  type GraphRun,
 } from './schema';
 
 // Optionally, if not using email/pass login, you can
@@ -95,6 +97,44 @@ export async function deleteGraph({ id, ownerId }: { id: string, ownerId: string
     return await db.delete(graph).where(and(eq(graph.id, id), eq(graph.ownerId, ownerId))).returning();
   } catch (error) {
     console.error('Failed to delete graph in database');
+    throw error;
+  }
+}
+
+export async function createGraphRun({ graphId, ownerId, data, workflowId }: { graphId: string, ownerId: string, data: GraphJSON, workflowId: string }): Promise<GraphRun[]> {
+  try {
+    return await db.insert(graphRun).values({ graphId, ownerId, data, workflowId }).returning();
+  } catch (error) {
+    console.error('Failed to create graph run in database');
+    throw error;
+  }
+}
+
+export async function getGraphRunById({ id }: { id: string }): Promise<GraphRun | null> {
+  try {
+    const [selectedGraphRun] = await db.select().from(graphRun).where(eq(graphRun.id, id));
+    return selectedGraphRun;
+  } catch (error) {
+    console.error('Failed to get graph run by id from database');
+    throw error;
+  }
+}
+
+export async function getLatestGraphRun({ id }: { id: string }): Promise<GraphRun | null> {
+  try {
+    const [selectedGraphRun] = await db.select().from(graphRun).where(eq(graphRun.graphId, id)).orderBy(desc(graphRun.createdAt)).limit(1);
+    return selectedGraphRun;
+  } catch (error) {
+    console.error('Failed to get latest graph run in database');
+    throw error;
+  }
+}
+
+export async function updateGraphRun({ id, status }: { id: string, status: string }): Promise<GraphRun[]> {
+  try {
+    return await db.update(graphRun).set({ status }).where(eq(graphRun.id, id)).returning();
+  } catch (error) {
+    console.error('Failed to update graph run in database');
     throw error;
   }
 }

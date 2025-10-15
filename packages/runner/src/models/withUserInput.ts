@@ -4,11 +4,11 @@ import { LanguageModel } from 'ai';
 export default function deterministicLanguageModel(): LanguageModel {
   return new MockLanguageModelV3({
     doGenerate: async (args): Promise<any> => {
-      // await new Promise(resolve => setTimeout(resolve, 100*5/25 + Math.random() * 500*5/25));
+      await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 500));
       const { prompt, tools } = args;
 
-      const nodeIdRegex = /"id":\s?"(user_input|position_for|position_against|judge)"/;
-      const nodeId: 'user_input' | 'position_for' | 'position_against' | 'judge' | null = (prompt[1].content[1] as any).text.match(nodeIdRegex)?.[1] || null;
+      const nodeIdRegex = /"id":\s?"([a-zA-Z0-9_]*)"/;
+      const nodeId: string | null = (prompt[1].content[1] as any).text.match(nodeIdRegex)?.[1] || null;
 
       const nodeTypeRegex = /"type":\s?"(user_input|llm)"/;
       const nodeType: 'user_input' | 'llm' | null = (prompt[1].content[1] as any).text.match(nodeTypeRegex)?.[1] || null;
@@ -20,41 +20,25 @@ export default function deterministicLanguageModel(): LanguageModel {
             usage: {},
             finishReason: 'tool-calls',
             content: [
-              { type: 'tool-call', toolCallId: `call_by_${nodeId}_1`, toolName: 'collectUserInput', input: JSON.stringify({ name: '${nodeId}_1', prompt: 'Question 1', default: 'Default 1' }) },
-              { type: 'tool-call', toolCallId: `call_by_${nodeId}_2`, toolName: 'collectUserInput', input: JSON.stringify({ name: '${nodeId}_2', prompt: 'Question 2', default: 'Default 2' }) },
+              { type: 'tool-call', toolCallId: `call_by_${nodeId}_1`, toolName: 'collectUserInput', input: JSON.stringify({ name: `${nodeId}_1`, prompt: 'Question 1', default: 'Default 1' }) },
+              { type: 'tool-call', toolCallId: `call_by_${nodeId}_2`, toolName: 'collectUserInput', input: JSON.stringify({ name: `${nodeId}_2`, prompt: 'Question 2', default: 'Default 2' }) },
             ],
           };
         } else if (prompt.length === 4) {
+          // Extract tool results from the prompt to include in the mock node output
+          const toolResults = Object.fromEntries(
+            (prompt[3].content as any[]).map(r => [r.output.value.for.name, r.output.value.value]));
+
           // Followup request after user input collection; returns tool call to resolve node output
           return {
             usage: {},
             finishReason: 'tool-calls',
             content: [
-              { type: 'tool-call', toolCallId: `call_by_${nodeId}_3`, toolName: 'resolveNodeOutput', input: JSON.stringify({ message: 'Collected and structured user inputs', data: { x: 1, y: 2, z: 3 } }) },
+              { type: 'tool-call', toolCallId: `call_by_${nodeId}_3`, toolName: 'resolveNodeOutput', input: JSON.stringify({ message: 'Collected and structured user inputs', data: toolResults }) },
             ],
           };
         }
-      } else if (nodeId === 'position_for') {
-        return {
-          // test that it handles the case where the node output is set by setting `resultObject` —— not tool call
-          usage: {},
-          finishReason: 'stop',
-          content: [
-            {
-              type: 'text',
-              text: `Constructed the case for the proposal`
-            }
-          ],
-        }
-      } else if (nodeId === 'position_against') {
-        return {
-          usage: {},
-          finishReason: 'tool-calls',
-          content: [
-            { type: 'tool-call', toolCallId: `call_by_position_against_1`, toolName: 'resolveNodeOutput', input: JSON.stringify({ message: 'Constructed the case against the proposal', data: { x: 10, y: 20, z: 30 } }) },
-          ],
-        }
-      } else if (nodeId === 'judge') {
+      } else if (nodeId && nodeType === 'llm') {
         return {
           usage: {},
           finishReason: 'tool-calls',
@@ -71,7 +55,7 @@ export default function deterministicLanguageModel(): LanguageModel {
           ],
         };  
       } else {
-        throw new Error('Unknown node id: ' + nodeId);
+        throw new Error(`Unknown node id "${nodeId}" and type "${nodeType}"`);
       }
     },
   })

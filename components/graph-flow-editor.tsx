@@ -1,11 +1,20 @@
 import { useState, useCallback, useEffect } from "react";
-import { applyNodeChanges, ReactFlow, NodeChange } from '@xyflow/react';
-import { GraphJSON } from "@/lib/graphSchema";
+import { ReactFlow, applyNodeChanges, NodeChange } from '@xyflow/react';
+
 import '@xyflow/react/dist/style.css';
+
+import BasicNode from "./graph-basic-node";
+import { GraphJSON } from "@/lib/graphSchema";
 
 type Props = {
   initialValue: GraphJSON;
   onChange?: (value: GraphJSON) => void;
+};
+
+
+const nodeTypes = {
+  llm: BasicNode,
+  user_input: BasicNode,
 };
 
 export default function GraphFlowEditor({ initialValue, onChange }: Props) {
@@ -20,7 +29,7 @@ export default function GraphFlowEditor({ initialValue, onChange }: Props) {
     (changes: NodeChange[]) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
     [],
   );
-  const bubbleUpChanges = useCallback(
+  const propagateChanges = useCallback(
     () => onChange?.({ ...initialValue, nodes }),
     [nodes],
   );
@@ -29,7 +38,8 @@ export default function GraphFlowEditor({ initialValue, onChange }: Props) {
       nodes={nodes}
       edges={initialValue.edges}
       onNodesChange={onNodesChange}
-      onNodeDragStop={bubbleUpChanges}
+      onNodeDragStop={propagateChanges}
+      nodeTypes={nodeTypes}
     />
   );
 }

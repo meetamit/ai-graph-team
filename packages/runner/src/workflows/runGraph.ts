@@ -19,7 +19,7 @@ function initRunState(graph: Graph, prompt?: any): RunState {
 
 export const receiveInput = defineSignal<[ProvidedInput[]]>('receiveInput');
 export const getNeededInput = defineQuery<NeededInput[]>('getNeededInput');
-export const getQuickStatus = defineQuery<NodesStatus>('getQuickStatus');
+export const getNodesStatus = defineQuery<NodesStatus>('getNodesStatus');
 export const getNodeOutput = defineQuery<Record<string, any>, [NodeId]>('getNodeOutput');
 
 export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: any}): Promise<RunState> {
@@ -40,7 +40,7 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
     resolved.forEach(([n, p]) => n.resolve(p));
   });
   setHandler(getNeededInput, () => neededInput);
-  setHandler(getQuickStatus, () => state.status);
+  setHandler(getNodesStatus, () => state.status);
   setHandler(getNodeOutput, (nodeId: NodeId) => state.outputs[nodeId]);
 
   const nodeById = Object.fromEntries(graph.nodes.map(n => [n.id, n]));
@@ -96,9 +96,15 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
                       nodeId: input.node.id, 
                       resolve,// will be resolved when the input is provided
                     });
+
+                    // Set the node status to awaiting
+                    state.status[input.node.id] = 'awaiting';
                   })
                 },
               }
+
+              // Set the node status back to running after the input is collected
+              state.status[input.node.id] = 'running';
             } else if (toolCall.toolName === 'resolveNodeOutput') {
               // Output resolution is handled by setting `resultObject` —— not tool call
               resultObject = Object.assign(resultObject || {}, toolCall.input);

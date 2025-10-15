@@ -30,13 +30,11 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  console.log('PUT 1');
   const session = await auth();
   if (!session || !session.user || !session.user.id) {
     return new Response('Unauthorized', { status: 401 });
   }
   
-  console.log('PUT 2', session.user);
   const body = await req.json();
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) {
@@ -48,9 +46,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (parsed.data.data) patch.data = parsed.data.data;
 
   const { id } = await params;
-  console.log('PUT 3', id);
   const [updated] = await updateGraph({ id, ownerId: session.user.id, patch });
-  console.log('PUT 4', updated);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(updated);
 }

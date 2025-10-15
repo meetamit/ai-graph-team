@@ -1,2 +1,2 @@
-export { GraphWorkflowClient } from './GraphWorkflowClient';
+export { GraphWorkflowClient, type GraphNodeOutputEvent, type GraphStatusEvent, type GraphNeededInputEvent } from './GraphWorkflowClient';
 export type { Graph, RunState, RunNodeInput, NeededInput, ProvidedInput, NodeType, NodesStatus, NodeStatus, NodeId } from './types';

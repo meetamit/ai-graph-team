@@ -3,26 +3,27 @@ import { NativeConnection } from '@temporalio/worker';
 import { runGraphWorkflow, receiveInput } from './workflows';
 import type { NeededInput, ProvidedInput, Graph, NodesStatus, NodeStatus, NodeId } from './types';
 
-export type{ NeededInput, ProvidedInput };
+export type { NeededInput, ProvidedInput };
 
 type WorkflowEventType = 'status' |'result' | 'output' | 'needInput';
 type WorkflowEvent = { type: WorkflowEventType; payload: any };
 
 export type GraphNodeOutputEvent = { type: 'output'; payload: [NodeId, any] };
 export type GraphStatusEvent = { type: 'status'; payload: NodesStatus };
+export type GraphNeededInputEvent = { type: 'needed'; payload: NeededInput[] };
 
 
 
 export type GraphWorkflowClientOptions = {
   connection?: Connection | NativeConnection;
-  collectInput: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
+  collectInput?: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
   taskQueue?: string;
   idBase?: string;
 };
 
 export class GraphWorkflowClient {
   private connection: Connection | NativeConnection | undefined;
-  private collectInput: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
+  private collectInput?: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
   private taskQueue: string;
   private idBase: string;
 
@@ -53,9 +54,14 @@ export class GraphWorkflowClient {
         workflowId: workflowId ?? this.idBase + Date.now(),
       });
 
-      const resultPromise = handle.result().then((r: any) => ({ type: 'result' as const, payload: r }));
-    
       console.log(`Started workflow ${handle.workflowId}`);
+
+      if (!this.collectInput) {
+        return handle.result();
+      }
+      
+      // if we have a collectInput function, we need to poll until the workflow needs input
+      const resultPromise = handle.result().then((r: any) => ({ type: 'result' as const, payload: r }));
 
       let event: WorkflowEvent;
       while (true) {
@@ -84,10 +90,15 @@ export class GraphWorkflowClient {
     }
   }
 
-  async *events(workflowId: string): AsyncGenerator<GraphStatusEvent | GraphNodeOutputEvent> {
+  async provideInput(workflowId: string, inputs: ProvidedInput[]): Promise<void> {
     const client = await this.getClient();
     const handle: WorkflowHandle = await client.workflow.getHandle(workflowId);
-    let last: NodesStatus = {}
+    await handle.signal(receiveInput, inputs);
+  }
+
+  async *events(workflowId: string): AsyncGenerator<GraphStatusEvent | GraphNeededInputEvent | GraphNodeOutputEvent> {
+    const client = await this.getClient();
+    const handle: WorkflowHandle = await client.workflow.getHandle(workflowId);
     try {
       const description = await handle.describe();
 
@@ -101,9 +112,11 @@ export class GraphWorkflowClient {
     }
 
     let t0 = Date.now();
+    let lastStatus: NodesStatus = {};
+    let lastNeeded: NeededInput[] = [];
     while (true && Date.now() - t0 < 10 * 60e3 /* 10 minutes timeout */) {
-      const status = await handle.query('getQuickStatus') as NodesStatus;
-      const changed: Array<[NodeId, NodeStatus]> = Object.entries(status).filter(([nodeId, status]) => status !== last[nodeId])
+      const status: NodesStatus = await handle.query('getNodesStatus') as NodesStatus;
+      const changed: Array<[NodeId, NodeStatus]> = Object.entries(status).filter(([nodeId, status]) => status !== lastStatus[nodeId])
       if (changed.length) {
         yield { type: 'status', payload: status };
       }
@@ -112,10 +125,23 @@ export class GraphWorkflowClient {
           yield { type: 'output', payload: [nodeId, await handle.query('getNodeOutput', nodeId)] };
         }
       }
-      if (Object.values(status as NodesStatus).every(s => s === 'done')) {
-        break;
+      
+      if (
+        Object.values(status).some(s => s === 'awaiting') ||
+        Object.values(lastStatus).some(s => s === 'awaiting')
+      ) {
+        const neededInput: NeededInput[] = await handle.query('getNeededInput');
+        if (lastNeeded.length !== neededInput?.length || lastNeeded.some((n, i) => n.nodeId !== neededInput?.[i]?.nodeId)) {
+          yield { type: 'needed', payload: neededInput };
+        }
+        if (Object.values(status).every(s => s === 'done')) {
+          break;
+        }
+        lastNeeded = neededInput;
       }
-      last = status;
+
+      lastStatus = status;
+
       await new Promise(resolve => setTimeout(resolve, 500));
     }
   }

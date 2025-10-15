@@ -50,7 +50,7 @@ async function runClient() {
 
 async function run() {
   const worker = await startWorker();
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  await new Promise(resolve => setTimeout(resolve, 1000));
   await runClient();
   worker.shutdown();
   process.exit(0);
