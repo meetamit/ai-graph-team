@@ -9,7 +9,7 @@ import {
   NeededInput, ProvidedInput, 
 } from '@ai-graph-team/runner';
 import { NodeSchema, EdgeSchema, GraphJSON } from "@/lib/graphSchema";
-import { GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunNeededInputEvent, GraphRunErrorEvent } from "@/lib/graphSchema";
+import { GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent } from "@/lib/graphSchema";
 
 const runner: GraphWorkflowClient = new GraphWorkflowClient({
   taskQueue: 'graph-queue',
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       if (graphRun) {
         await sendEvent({ type: 'run', payload: graphRun } as GraphRunRecordEvent);
 
-        let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent;
+        let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent | GraphRunTranscriptEvent;
         for await (event of runner.events(graphRun.workflowId)) { await sendEvent(event); }
         const [updated] = await updateGraphRun({ id: graphRun.id, status: 'done' });
         if (!updated) { throw new Error('Failed to update graph run'); }

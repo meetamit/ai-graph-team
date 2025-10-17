@@ -43,7 +43,12 @@ export const STARTER_GRAPH: GraphJSON = {
   ],
 };
 
-import type { NodeId, NodeStatus, NodesStatus, NeededInput, ProvidedInput, GraphStatusEvent, GraphNodeOutputEvent, GraphNeededInputEvent } from '@ai-graph-team/runner';
+import type {
+  NodeId, NodeStatus, NodesStatus, NeededInput, ProvidedInput, 
+  GraphStatusEvent, GraphNodeOutputEvent, GraphNeededInputEvent, GraphTranscriptEvent,
+  ModelMessage, AssistantModelMessage, UserModelMessage, SystemModelMessage, ToolModelMessage,
+  ToolCallPart, ToolResultPart, TextPart,
+} from '@ai-graph-team/runner';
 import { GraphRun } from "./db/schema";
 
 export type { NodeId, NodeStatus, NodesStatus, NeededInput, ProvidedInput };
@@ -51,9 +56,23 @@ export type { NodeId, NodeStatus, NodesStatus, NeededInput, ProvidedInput };
 export type GraphRunStatusEvent = GraphStatusEvent;
 export type GraphRunNodeOutputEvent = GraphNodeOutputEvent;
 export type GraphRunNeededInputEvent = GraphNeededInputEvent;
+export type GraphRunTranscriptEvent = GraphTranscriptEvent;
 export type GraphRunRecordEvent = { type: 'run'; payload: GraphRun | null };
 export type GraphRunDoneEvent = { type: 'done'; payload: {} };
 export type GraphRunErrorEvent = { type: 'error'; payload: { error: string } };
 
-export type GraphRunEvent = GraphRunRecordEvent | GraphRunStatusEvent | GraphRunNeededInputEvent | GraphRunNodeOutputEvent | GraphRunDoneEvent | GraphRunErrorEvent;
+export type GraphRunEvent = GraphRunRecordEvent | GraphRunStatusEvent | GraphRunNeededInputEvent | GraphRunNodeOutputEvent | GraphRunTranscriptEvent | GraphRunDoneEvent | GraphRunErrorEvent;
 export type GraphRunEventType = GraphRunEvent['type'];
+
+export type GraphNodeMessage = ModelMessage;
+
+export type GraphNodeAssistantModel = AssistantModelMessage;
+export type GraphNodeUserModel = UserModelMessage;
+export type GraphNodeSystemModel = SystemModelMessage;
+export type GraphNodeToolModel = ToolModelMessage;
+
+export type GraphNodeToolCallPart = ToolCallPart;
+export type GraphNodeToolResultPart = ToolResultPart;
+export type GraphNodeTextPart = TextPart;
+
+export type GraphNodeMessageGroup = { nodeId: NodeId, messages: GraphNodeMessage[]};

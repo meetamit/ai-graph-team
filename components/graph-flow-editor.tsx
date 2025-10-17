@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
-import { ReactFlow, applyNodeChanges, NodeChange } from '@xyflow/react';
+import {
+  ReactFlow, ReactFlowProvider, useOnSelectionChange, applyNodeChanges, 
+  type NodeChange, type Node
+} from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
 
@@ -9,6 +12,7 @@ import { GraphJSON } from "@/lib/graphSchema";
 type Props = {
   initialValue: GraphJSON;
   onChange?: (value: GraphJSON) => void;
+  onSelectNode?: (node: Node) => void;
 };
 
 
@@ -17,9 +21,12 @@ const nodeTypes = {
   user_input: BasicNode,
 };
 
-export default function GraphFlowEditor({ initialValue, onChange }: Props) {
+function GraphFlowEditor({ initialValue, onChange, onSelectNode }: Props) {
   const [nodes, setNodes] = useState(initialValue.nodes);
 
+  useOnSelectionChange({ onChange: useCallback(({ nodes: [node] }: { nodes: Node[] }) => {
+    onSelectNode && onSelectNode(node as Node);
+  }, [onSelectNode]) });
   useEffect(
     () => { setNodes(initialValue.nodes); }, 
     [initialValue],
@@ -41,5 +48,13 @@ export default function GraphFlowEditor({ initialValue, onChange }: Props) {
       onNodeDragStop={propagateChanges}
       nodeTypes={nodeTypes}
     />
+  );
+}
+
+export default function FlowWithProvider(props: Props) {
+  return (
+    <ReactFlowProvider>
+      <GraphFlowEditor {...props} />
+    </ReactFlowProvider>
   );
 }

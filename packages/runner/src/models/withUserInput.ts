@@ -1,5 +1,5 @@
 import { MockLanguageModelV3 } from 'ai/test';
-import { LanguageModel } from 'ai';
+import { LanguageModel, TextPart } from 'ai';
 
 export default function deterministicLanguageModel(): LanguageModel {
   return new MockLanguageModelV3({
@@ -7,11 +7,8 @@ export default function deterministicLanguageModel(): LanguageModel {
       await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 500));
       const { prompt, tools } = args;
 
-      const nodeIdRegex = /"id":\s?"([a-zA-Z0-9_]*)"/;
-      const nodeId: string | null = (prompt[1].content[1] as any).text.match(nodeIdRegex)?.[1] || null;
-
-      const nodeTypeRegex = /"type":\s?"(user_input|llm)"/;
-      const nodeType: 'user_input' | 'llm' | null = (prompt[1].content[1] as any).text.match(nodeTypeRegex)?.[1] || null;
+      // Extract node params from the prompt message where it was injected by the workflow engine
+      const { id: nodeId, type: nodeType } = JSON.parse((prompt[1].content[1] as TextPart).text as string)
       
       if (nodeType === 'user_input') {
         if (prompt.length === 2) {

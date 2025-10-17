@@ -16,6 +16,10 @@ const nodeVariants = cva(
         running: 'bg-popover text-popover-foreground border-primary',
         done: 'bg-primary-foreground text-primary border-primary',
       },
+      selected: {
+        true: 'border-double border-4',
+        false: '',
+      },
     },
     defaultVariants: {
       status: 'unknown',
@@ -23,11 +27,11 @@ const nodeVariants = cva(
   },
 );
 
-export default function GraphBasicNode({ id, type, data }: { id: string, type: string, data: any }) {
+export default function GraphBasicNode({ id, type, data, selected }: { id: string, type: string, data: any, selected: boolean }) {
   return <>
     <Handle type="target" position={Position.Top} />
     <div
-      className={cn('w-[200px]', nodeVariants({ status: data.status }), `node-status-${data.status}`)}
+      className={cn('w-[200px]', nodeVariants({ status: data.status, selected }), `node-status-${data.status}`)}
       data-gnid={id}
       data-gntype={type}
     >

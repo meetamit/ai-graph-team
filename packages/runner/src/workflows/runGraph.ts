@@ -1,6 +1,6 @@
 import { proxyActivities, log, defineSignal, defineQuery, setHandler, condition, upsertSearchAttributes } from '@temporalio/workflow';
 import { NodeId, NodeType, Node, Edge, Graph, RunState, RunNodeInput, NeededInput, ProvidedInput, NodesStatus } from '../types';
-import { Activities, NodeStepResult } from '../activities/createActivities';
+import { Activities, NodeStepResult, Transcript } from '../activities/createActivities';
 import { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai';
 
 const { makeToolCall, takeNodeFirstStep, takeNodeFollowupStep } = proxyActivities<Activities>({
@@ -21,6 +21,7 @@ export const receiveInput = defineSignal<[ProvidedInput[]]>('receiveInput');
 export const getNeededInput = defineQuery<NeededInput[]>('getNeededInput');
 export const getNodesStatus = defineQuery<NodesStatus>('getNodesStatus');
 export const getNodeOutput = defineQuery<Record<string, any>, [NodeId]>('getNodeOutput');
+export const getTranscripts = defineQuery<Array<[NodeId, Transcript]>, [number]>('getTranscripts');
 
 export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: any}): Promise<RunState> {
   let neededInput: NeededInput[] = [];
@@ -42,13 +43,15 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
   setHandler(getNeededInput, () => neededInput);
   setHandler(getNodesStatus, () => state.status);
   setHandler(getNodeOutput, (nodeId: NodeId) => state.outputs[nodeId]);
+  setHandler(getTranscripts, (offset: number) => transcripts.slice(offset || 0));
 
   const nodeById = Object.fromEntries(graph.nodes.map(n => [n.id, n]));
   const state = initRunState(graph, prompt);
+  const transcripts: Array<[NodeId, Transcript]> = [];
 
   async function runNodeWorkflow(input: RunNodeInput): Promise<any> {
     const MAX_STEPS = 10;
-    let transcript: Array<ModelMessage> = [];
+    let transcript: Transcript = [];
     let stepResult: NodeStepResult | undefined;
     let resultObject: any;
     for (let i = 0; i < MAX_STEPS && !resultObject; i++) {
@@ -62,6 +65,7 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
       // Append the generated messages to the transcript
       // transcript.splice(transcript.length, 0, ...(stepResult.messages.map(({ role, content }) => ({ role, content })) as ModelMessage[]));
       transcript.splice(transcript.length, 0, ...stepResult.messages);
+      transcripts.push([input.node.id, stepResult.messages]);
 
       if (stepResult.finishReason === 'stop') {
         const content = transcript[transcript.length - 1]?.content;
@@ -123,7 +127,9 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
             return toolResult;
           })
         )
-        transcript.push({ role: 'tool', content: toolCallResults });
+        const toolMessage: ModelMessage = { role: 'tool', content: toolCallResults }
+        transcript.push(toolMessage);
+        transcripts.push([input.node.id, [toolMessage] as Transcript]);
       } else {
         throw new Error(`Unexpected finish reason: ${stepResult.finishReason}`);
       }

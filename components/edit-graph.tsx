@@ -1,14 +1,15 @@
 "use client";
 
+import { useMemo } from "react";
 import { Graph } from "@/lib/db/schema";
-import { GraphJSON } from "@/lib/graphSchema";
+import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graphSchema";
 import GraphTextEditor from "./graph-text-editor";
 import GraphFlowEditor from "./graph-flow-editor";
 import GraphInputForm from "./graph-input-form";
+import MessagesLog from "./graph-message-log";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useGraph } from "@/hooks/use-graph";
-
 
 export default function EditGraph({ graph }: { graph: Graph }) {
   (graph.data as GraphJSON).nodes.forEach((node, i) => {
@@ -18,11 +19,18 @@ export default function EditGraph({ graph }: { graph: Graph }) {
   });
 
   const {
-    neededInput, submitNeededInput,
+    neededInput, submitNeededInput, 
+    selectedNode, setSelectedNode, transcripts,
     title, setTitle, data, setData, saving, deleting, error, creating,
     saveGraph, deleteGraph, runGraph,
   } = useGraph(graph);
-  
+
+  const selectedNodeMessages: GraphNodeMessageGroup[] = useMemo(() => {
+    return transcripts
+      .filter(([nodeId]) => nodeId === selectedNode?.id)
+      .map(([nodeId, transcript]) => ({ nodeId, messages: transcript }));
+  }, [transcripts, selectedNode]);
+
   return (
     <div className="space-y-3">
       <h1 className="text-2xl font-semibold">{creating ? 'New Graph' : `Edit: ${graph?.title}`}</h1>
@@ -33,8 +41,10 @@ export default function EditGraph({ graph }: { graph: Graph }) {
       />
       <GraphTextEditor initialValue={data} onChange={setData} />
       <div className="h-96 border border-primary rounded-md">
-        <GraphFlowEditor initialValue={data} onChange={setData} />
+        <GraphFlowEditor initialValue={data} onChange={setData} onSelectNode={setSelectedNode} />
       </div>
+
+      <MessagesLog messageGroups={selectedNodeMessages} />
 
       <GraphInputForm 
         neededInput={neededInput} 

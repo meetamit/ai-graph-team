@@ -2,6 +2,7 @@ import { Connection, Client, WorkflowHandle, WorkflowNotFoundError } from '@temp
 import { NativeConnection } from '@temporalio/worker';
 import { runGraphWorkflow, receiveInput } from './workflows';
 import type { NeededInput, ProvidedInput, Graph, NodesStatus, NodeStatus, NodeId } from './types';
+import type { Transcript } from './activities/createActivities';
 
 export type { NeededInput, ProvidedInput };
 
@@ -11,6 +12,7 @@ type WorkflowEvent = { type: WorkflowEventType; payload: any };
 export type GraphNodeOutputEvent = { type: 'output'; payload: [NodeId, any] };
 export type GraphStatusEvent = { type: 'status'; payload: NodesStatus };
 export type GraphNeededInputEvent = { type: 'needed'; payload: NeededInput[] };
+export type GraphTranscriptEvent = { type: 'transcript'; payload: Array<[NodeId, Transcript]>; };
 
 
 
@@ -96,16 +98,13 @@ export class GraphWorkflowClient {
     await handle.signal(receiveInput, inputs);
   }
 
-  async *events(workflowId: string): AsyncGenerator<GraphStatusEvent | GraphNeededInputEvent | GraphNodeOutputEvent> {
+  async *events(workflowId: string): AsyncGenerator<GraphStatusEvent | GraphNeededInputEvent | GraphNodeOutputEvent | GraphTranscriptEvent> {
     const client = await this.getClient();
     const handle: WorkflowHandle = await client.workflow.getHandle(workflowId);
     try {
       const description = await handle.describe();
-
       if (description?.status?.name === 'FAILED') { return }
       if (description?.status?.name === 'TERMINATED') { return }
-
-      // yield { type: 'output', payload: ['none', description] };
     } catch (e) {
       if (e instanceof WorkflowNotFoundError) { return; }
       throw e;
@@ -114,6 +113,7 @@ export class GraphWorkflowClient {
     let t0 = Date.now();
     let lastStatus: NodesStatus = {};
     let lastNeeded: NeededInput[] = [];
+    let lastTranscripts: Array<[NodeId, Transcript]> = [];
     while (true && Date.now() - t0 < 10 * 60e3 /* 10 minutes timeout */) {
       const status: NodesStatus = await handle.query('getNodesStatus') as NodesStatus;
       const changed: Array<[NodeId, NodeStatus]> = Object.entries(status).filter(([nodeId, status]) => status !== lastStatus[nodeId])
@@ -138,6 +138,16 @@ export class GraphWorkflowClient {
           break;
         }
         lastNeeded = neededInput;
+      }
+      
+      if (
+        Object.entries(status).some(([nodeId, status]) => status === 'running' || lastStatus[nodeId] !== status)
+      ) {
+        const newTranscripts: Array<[NodeId, Transcript]> = await handle.query('getTranscripts', lastTranscripts.length);
+        if (newTranscripts.length) {
+          yield { type: 'transcript', payload: newTranscripts };
+          lastTranscripts = [...lastTranscripts, ...newTranscripts];
+        }
       }
 
       lastStatus = status;
