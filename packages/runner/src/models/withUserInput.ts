@@ -10,9 +10,9 @@ export default function deterministicLanguageModel(): LanguageModel {
       // Extract node params from the prompt message where it was injected by the workflow engine
       const { id: nodeId, type: nodeType } = JSON.parse((prompt[1].content[1] as TextPart).text as string)
       
-      if (nodeType === 'user_input') {
+      if (nodeType === 'input') {
         if (prompt.length === 2) {
-          // Initial request for user_input node; returns tool call to collect user input
+          // Initial request for input node; returns tool call to collect user input
           return {
             usage: {},
             finishReason: 'tool-calls',

@@ -30,10 +30,10 @@ export const EMPTY_GRAPH: GraphJSON = { nodes: [], edges: [] };
 // A friendly starter template for new graphs
 export const STARTER_GRAPH: GraphJSON = {
   nodes: [
-    { id: "user_input",       type: "user_input", data: { label: "User Input", }, position: { x: 250, y: 50 } },
-    { id: "position_for",     type: "llm",        data: { label: "For", },        position: { x: 50,  y: 150 } },
-    { id: "position_against", type: "llm",        data: { label: "Against", },    position: { x: 450, y: 150 } },
-    { id: "judge",            type: "llm",        data: { label: "Judge", },      position: { x: 250, y: 250 } },
+    { id: "user_input",       type: "input", data: { label: "User Input", }, position: { x: 250, y: 50 } },
+    { id: "position_for",     type: "llm",   data: { label: "For", },        position: { x: 50,  y: 150 } },
+    { id: "position_against", type: "llm",   data: { label: "Against", },    position: { x: 450, y: 150 } },
+    { id: "judge",            type: "llm",   data: { label: "Judge", },      position: { x: 250, y: 250 } },
   ],
   edges: [
     { id: "e1", source: "user_input",       target: "position_for" },

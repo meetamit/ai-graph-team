@@ -4,7 +4,7 @@
     {
       "id": "user_input",
       "name": "User Inputs",
-      "type": "user_input",
+      "type": "input",
       "description": "Decision brief and evaluation frame provided by the user.",
       "inputs": {
         "proposal": "Concise statement of the decision to make. Example: 'Adopt library X for front-end state management in Q4.'",

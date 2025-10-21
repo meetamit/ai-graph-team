@@ -5,6 +5,7 @@ import {
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
+import './react-flow-overrides.css'
 
 import BasicNode from "./graph-basic-node";
 import { GraphJSON } from "@/lib/graphSchema";
@@ -18,7 +19,7 @@ type Props = {
 
 const nodeTypes = {
   llm: BasicNode,
-  user_input: BasicNode,
+  input: BasicNode,
 };
 
 function GraphFlowEditor({ initialValue, onChange, onSelectNode }: Props) {
