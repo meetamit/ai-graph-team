@@ -42,18 +42,21 @@ export default function GraphEditor({ initialValue, onChange, className }: Props
   }, [onChange]);
 
   return (
-    <div className={className}>
+    <div className={`${className} relative`}>
       <CodeMirror
         value={text}
-        height="400px"
+        height="100%"
+        style={{ height: "100%" }}
         extensions={[json()]}
         onChange={handleChange}
         basicSetup={{ lineNumbers: true, bracketMatching: true, autocompletion: true }}
       />
       {error && (
-        <p className="mt-2 whitespace-pre-wrap text-sm text-red-600">
-          {error}
-        </p>
+        <div className="absolute top-0 left-0 right-0 bg-white bg-opacity-80 p-2 border-b border-gray-200">
+          <p className="mt-2 whitespace-pre-wrap text-sm text-red-600">
+            {error}
+          </p>
+        </div>
       )}
     </div>
   );

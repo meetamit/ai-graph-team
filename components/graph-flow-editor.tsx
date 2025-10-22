@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  ReactFlow, ReactFlowProvider, useOnSelectionChange, applyNodeChanges, 
+  ReactFlow, ReactFlowProvider, Background, useOnSelectionChange, applyNodeChanges, 
   type NodeChange, type Node
 } from '@xyflow/react';
 
@@ -107,7 +107,9 @@ function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, n
       onNodesChange={onNodesChange}
       onNodeDragStop={propagateChanges}
       nodeTypes={nodeTypes}
-    />
+    >
+      <Background gap={15} size={1.5} />
+    </ReactFlow>
   );
 }
 

@@ -1,15 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Graph } from "@/lib/db/schema";
 import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graphSchema";
 import GraphTextEditor from "./graph-text-editor";
 import GraphFlowEditor from "./graph-flow-editor";
-import GraphInputForm from "./graph-input-form";
-import MessagesLog from "./graph-message-log";
+import NodeSidebar from "./node-sidebar";
+import InputFormModal from "./input-form-modal";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useGraph } from "@/hooks/use-graph";
+import { EditIcon } from "./icons";
 
 export default function EditGraph({ graph }: { graph: Graph }) {
   // Ensure the graph data has the proper structure with layouts
@@ -29,61 +30,118 @@ export default function EditGraph({ graph }: { graph: Graph }) {
     saveGraph, deleteGraph, runGraph,
   } = useGraph(graph);
 
+  const [isTextEditorOpen, setIsTextEditorOpen] = useState(false);
+  const [isInputFormOpen, setIsInputFormOpen] = useState(false);
+
   const selectedNodeMessages: GraphNodeMessageGroup[] = useMemo(() => {
     return transcripts
       .filter(([nodeId]) => nodeId === selectedNode?.id)
       .map(([nodeId, transcript]) => ({ nodeId, messages: transcript }));
   }, [transcripts, selectedNode]);
 
+  // Auto-open input form when neededInput.length > 0
+  useEffect(() => {
+    if (neededInput.length > 0) {
+      setIsInputFormOpen(true);
+    }
+  }, [neededInput.length]);
+
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-semibold">{creating ? 'New Graph' : `Edit: ${graph?.title}`}</h1>
-      <Input
-        value={title}
-        placeholder="Title"
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <GraphTextEditor initialValue={data} onChange={setData} />
-      <div className="h-96 border border-primary rounded-md">
-        <GraphFlowEditor 
-          initialValue={data} 
-          onChange={setData} 
-          onSelectNode={setSelectedNode}
-          nodeStatuses={nodeStatuses}
-          nodeOutputs={nodeOutputs}
-        />
+    <div className="h-screen flex flex-col">
+      <div className="flex items-center justify-between p-2 border-b border-gray-200 bg-white">
+        <div className="flex items-center gap-4">
+          <Input
+            value={title}
+            placeholder="Title"
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-64"
+          />
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            disabled={saving || !title}
+            onClick={saveGraph}
+            size="sm"
+          >
+            {saving ? "Saving..." : creating ?"Create Graph" : "Save"}
+          </Button>
+
+          {!creating && (
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={deleteGraph}
+              size="sm"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          )}
+
+          {!creating && (
+            <Button
+              onClick={runGraph}
+              size="sm"
+            >
+              Run
+            </Button>
+          )}
+        </div>
       </div>
 
-      <MessagesLog messageGroups={selectedNodeMessages} />
+      <div className="flex-1 relative">
+        <div className="absolute inset-0 flex">
+          {isTextEditorOpen && <div className="flex-grow flex-shrink min-w-[50%] max-w-2xl h-full border-r">
+            <GraphTextEditor 
+              initialValue={data} 
+              onChange={setData}
+              className="h-full"
+            />
+          </div>}
+          <div className="flex-grow flex-shrink min-w-[50%]">
+            <GraphFlowEditor 
+              initialValue={data} 
+              onChange={setData} 
+              onSelectNode={setSelectedNode}
+              nodeStatuses={nodeStatuses}
+              nodeOutputs={nodeOutputs}
+            />
+          </div>
+          <div className="absolute bottom-4 left-16 z-10">
+            <Button
+              variant={isTextEditorOpen ? "default" : "outline"}
+              size="sm"
+              onClick={event => {
+                event.preventDefault();
+                setIsTextEditorOpen(!isTextEditorOpen);
+              }}
+              className="flex items-center gap-2"
+            >
+              <EditIcon size={16} />
+              Edit as Text
+            </Button>
+          </div>
+        </div>
 
-      <GraphInputForm 
-        neededInput={neededInput} 
-        onSubmit={(inputs) => { submitNeededInput(inputs); }}
-      />
+        {selectedNode && <NodeSidebar 
+          messageGroups={selectedNodeMessages}
+        />}
 
-      <div className="flex gap-2">
-        <Button
-          disabled={saving || !title}
-          onClick={saveGraph}
-        >
-          {saving ? "Saving..." : creating ?"Create Graph" : "Save"}
-        </Button>
-
-        {!creating && <Button
-          variant="destructive"
-          disabled={deleting}
-          onClick={deleteGraph}
-        >
-          {deleting ? "Deleting..." : "Delete"}
-        </Button>}
-
-        {!creating && <Button
-          onClick={runGraph}
-        >Run</Button>}
+        {isInputFormOpen && <InputFormModal
+          onClose={() => setIsInputFormOpen(false)}
+          neededInput={neededInput}
+          onSubmit={(inputs) => { 
+            submitNeededInput(inputs);
+            setIsInputFormOpen(false);
+          }}
+        />}
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
+      {error && (
+        <div className="absolute bottom-4 left-4 right-4 bg-red-50 border border-red-200 rounded-md p-3">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
     </div>
   );
 }

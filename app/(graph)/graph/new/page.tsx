@@ -7,7 +7,7 @@ import EditGraph from "@/components/edit-graph";
 export default async function NewGraphPage() {
   return (
     <form
-      className="max-w-3xl mx-auto p-6 space-y-4"
+      className=""
     >
       <EditGraph graph={{
         id: '',

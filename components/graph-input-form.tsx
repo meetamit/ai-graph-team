@@ -38,7 +38,7 @@ export default function GraphInputForm({ neededInput, onSubmit, onCancel }: Grap
   }
 
   return (
-    <div className="space-y-4 p-4 border border-primary rounded-md bg-muted/50" data-testid="graph-input-form">
+    <div className="space-y-4 p-4 rounded-md bg-muted/50" data-testid="graph-input-form">
       <h2 className="text-lg font-semibold">Required Inputs</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         {neededInput.map((input) => (
@@ -63,7 +63,7 @@ export default function GraphInputForm({ neededInput, onSubmit, onCancel }: Grap
             Submit Inputs
           </Button>
           {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
               Cancel
             </Button>
           )}

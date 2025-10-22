@@ -13,7 +13,7 @@ export default async function EditGraphPage({ params }: { params: { id: string }
   }
 
   return (
-    <section className="max-w-3xl mx-auto p-6 space-y-4">
+    <section className="">
       <EditGraph graph={graph as Graph} />
     </section>
   );
