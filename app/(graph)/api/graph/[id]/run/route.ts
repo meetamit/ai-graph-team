@@ -8,7 +8,7 @@ import {
   Graph, NodeType,
   NeededInput, ProvidedInput, 
 } from '@ai-graph-team/runner';
-import { NodeSchema, EdgeSchema, GraphJSON } from "@/lib/graphSchema";
+import { GraphJSON } from "@/lib/graphSchema";
 import { GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent } from "@/lib/graphSchema";
 
 const runner: GraphWorkflowClient = new GraphWorkflowClient({
@@ -86,11 +86,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     nodes: (graph.data as GraphJSON).nodes.map((node) => ({
       id: node.id,
       type: node.type as NodeType,
+      name: node.name,
+      intent: node.intent,
     })),
     edges: (graph.data as GraphJSON).edges.map((edge) => ({
-      id: edge.id,
-      from: edge.source,
-      to: edge.target,
+      from: edge.from,
+      to: edge.to,
     })),
   };
 

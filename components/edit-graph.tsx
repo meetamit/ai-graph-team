@@ -12,16 +12,20 @@ import { Input } from "./ui/input";
 import { useGraph } from "@/hooks/use-graph";
 
 export default function EditGraph({ graph }: { graph: Graph }) {
-  (graph.data as GraphJSON).nodes.forEach((node, i) => {
-    node.type = node.type || 'llm';
-    node.data = node.data || {};
-    node.position = node.position || { x: 20 + ((i+1) % 3) * 80, y: 20 + i * 40 };
-  });
+  // Ensure the graph data has the proper structure with layouts
+  const graphData = graph.data as GraphJSON;
+  if (!graphData.layouts) {
+    graphData.layouts = {};
+    graphData.nodes.forEach((node, i) => {
+      graphData.layouts![node.id] = { x: 20 + ((i+1) % 3) * 80, y: 20 + i * 40 };
+    });
+  }
 
   const {
     neededInput, submitNeededInput, 
     selectedNode, setSelectedNode, transcripts,
     title, setTitle, data, setData, saving, deleting, error, creating,
+    nodeStatuses, nodeOutputs,
     saveGraph, deleteGraph, runGraph,
   } = useGraph(graph);
 
@@ -41,7 +45,13 @@ export default function EditGraph({ graph }: { graph: Graph }) {
       />
       <GraphTextEditor initialValue={data} onChange={setData} />
       <div className="h-96 border border-primary rounded-md">
-        <GraphFlowEditor initialValue={data} onChange={setData} onSelectNode={setSelectedNode} />
+        <GraphFlowEditor 
+          initialValue={data} 
+          onChange={setData} 
+          onSelectNode={setSelectedNode}
+          nodeStatuses={nodeStatuses}
+          nodeOutputs={nodeOutputs}
+        />
       </div>
 
       <MessagesLog messageGroups={selectedNodeMessages} />

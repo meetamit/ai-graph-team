@@ -4,7 +4,7 @@ import { Graph, GraphRun } from "@/lib/db/schema";
 import type { 
   GraphJSON, NeededInput, ProvidedInput, NodeId,
   GraphRunEvent, GraphRunStatusEvent, GraphRunNeededInputEvent,GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunErrorEvent, GraphRunTranscriptEvent,
-  GraphNodeMessage,
+  NodeStatuses, GraphNodeMessage,
 } from "@/lib/graphSchema";
 
 type GraphRunPayloadByType<T extends GraphRunEvent['type']> = Extract<GraphRunEvent, { type: T }>['payload'];
@@ -30,6 +30,8 @@ export function useGraph(graph: Graph) {
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [transcripts, setTranscripts] = useState<Array<[NodeId, GraphNodeMessage[]]>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [nodeStatuses, setNodeStatuses] = useState<NodeStatuses>({});
+  const [nodeOutputs, setNodeOutputs] = useState<Record<NodeId, any>>({});
   const creating = graph.id === '';
 
   const saveGraph = async () => {
@@ -92,23 +94,13 @@ export function useGraph(graph: Graph) {
     
     onGraphRunEvent(eventSource, 'status', (status: GraphRunStatusEvent['payload']) => {
       console.log('STATUS', status);
-      setData(data => ({
-        ...data,
-        nodes: data.nodes.map((node) => {
-          return node.data.status !== status[node.id] ? { ...node, data: { ...node.data, status: status[node.id] } } : node
-        })
-      }));
+      setNodeStatuses(status);
     });
 
     onGraphRunEvent(eventSource, 'output', (payload: GraphRunNodeOutputEvent['payload']) => {
       console.log('OUTPUT', payload);
-      const [nodeId, output] = payload
-      setData(data => ({
-        ...data,
-        nodes: data.nodes.map((node) => {
-          return nodeId === node.id ? { ...node, data: { ...node.data, output } } : node
-        })
-      }));
+      const [nodeId, output] = payload;
+      setNodeOutputs(prev => ({ ...prev, [nodeId]: output }));
     });
 
     onGraphRunEvent(eventSource, 'transcript', (payload: GraphRunTranscriptEvent['payload']) => {
@@ -153,6 +145,7 @@ export function useGraph(graph: Graph) {
     neededInput, submitNeededInput, 
     selectedNode, setSelectedNode, transcripts,
     title, setTitle, data, setData, saving, setSaving, deleting, setDeleting, error, setError, creating,
+    nodeStatuses, nodeOutputs,
     saveGraph, deleteGraph, runGraph,
-  }), [neededInput, submitNeededInput, selectedNode, setSelectedNode, title, setTitle, data, setData, saving, setSaving, deleting, setDeleting, error, setError, creating]);
+  }), [neededInput, submitNeededInput, selectedNode, setSelectedNode, title, setTitle, data, setData, saving, setSaving, deleting, setDeleting, error, setError, creating, nodeStatuses, nodeOutputs]);
 }

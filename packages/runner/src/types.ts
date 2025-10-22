@@ -1,15 +1,15 @@
 export type NodeId = string;
 export type NodeType = 'input' | 'llm' | 'router';
-export type Node = { id: NodeId; type: NodeType; };
+export type Node = { id: NodeId; type: NodeType; name: string; intent?: string; };
 export type Edge = { from: NodeId; to: NodeId };
 export type Graph = { nodes: Node[]; edges: Edge[] };
 
 export type NodeStatus = 'pending' | 'awaiting' | 'running' | 'done' | 'error';
-export type NodesStatus = Record<NodeId, NodeStatus>;
+export type NodeStatuses = Record<NodeId, NodeStatus>;
 
 export type RunState = {
   prompt?: any;
-  status: NodesStatus;
+  status: NodeStatuses;
   pendingIn: Record<NodeId, number>; // in-degree remaining
   ready: NodeId[]; // nodes with in-degree 0 and not started
   outputs: Record<NodeId, any>; // node outputs available to downstream

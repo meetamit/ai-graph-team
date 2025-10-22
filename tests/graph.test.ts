@@ -33,7 +33,7 @@ test.describe('graph activity', () => {
     const testTitle = `Test Title 2 — ${format(new Date(), 'MM-dd-yyyy HH:mm:ss')}`;
     await graphPage.createNewGraph(testTitle);
     await graphPage.runGraph(testTitle);
-    await graphPage.expectNodesStatus({
+    await graphPage.expectNodeStatuses({
       user_input: 'awaiting',
       position_for: 'pending',
       position_against: 'pending',
@@ -56,13 +56,13 @@ test.describe('graph activity', () => {
     // Submit the form
     await graphPage.submitInputForm();
 
-    await graphPage.expectNodesStatus({
+    await graphPage.expectNodeStatuses({
       user_input:       expect.stringMatching(/pending|running|done/),
       position_for:     expect.stringMatching(/pending|running|done/),
       position_against: expect.stringMatching(/pending|running|done/),
       judge:            expect.stringMatching(/pending|running/),
     })
-    await graphPage.expectNodesStatus({
+    await graphPage.expectNodeStatuses({
       user_input: 'done',
       position_for: 'done',
       position_against: 'done',

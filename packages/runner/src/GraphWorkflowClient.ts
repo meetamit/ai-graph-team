@@ -1,7 +1,7 @@
 import { Connection, Client, WorkflowHandle, WorkflowNotFoundError } from '@temporalio/client';
 import { NativeConnection } from '@temporalio/worker';
 import { runGraphWorkflow, receiveInput } from './workflows';
-import type { NeededInput, ProvidedInput, Graph, NodesStatus, NodeStatus, NodeId } from './types';
+import type { NeededInput, ProvidedInput, Graph, NodeStatuses, NodeStatus, NodeId } from './types';
 import type { Transcript } from './activities/createActivities';
 
 export type { NeededInput, ProvidedInput };
@@ -10,7 +10,7 @@ type WorkflowEventType = 'status' |'result' | 'output' | 'needInput';
 type WorkflowEvent = { type: WorkflowEventType; payload: any };
 
 export type GraphNodeOutputEvent = { type: 'output'; payload: [NodeId, any] };
-export type GraphStatusEvent = { type: 'status'; payload: NodesStatus };
+export type GraphStatusEvent = { type: 'status'; payload: NodeStatuses };
 export type GraphNeededInputEvent = { type: 'needed'; payload: NeededInput[] };
 export type GraphTranscriptEvent = { type: 'transcript'; payload: Array<[NodeId, Transcript]>; };
 
@@ -111,11 +111,11 @@ export class GraphWorkflowClient {
     }
 
     let t0 = Date.now();
-    let lastStatus: NodesStatus = {};
+    let lastStatus: NodeStatuses = {};
     let lastNeeded: NeededInput[] = [];
     let lastTranscripts: Array<[NodeId, Transcript]> = [];
     while (true && Date.now() - t0 < 10 * 60e3 /* 10 minutes timeout */) {
-      const status: NodesStatus = await handle.query('getNodesStatus') as NodesStatus;
+      const status: NodeStatuses = await handle.query('getNodeStatuses') as NodeStatuses;
       const changed: Array<[NodeId, NodeStatus]> = Object.entries(status).filter(([nodeId, status]) => status !== lastStatus[nodeId])
       if (changed.length) {
         yield { type: 'status', payload: status };

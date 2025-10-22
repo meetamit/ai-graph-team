@@ -1,5 +1,5 @@
 import { proxyActivities, log, defineSignal, defineQuery, setHandler, condition, upsertSearchAttributes } from '@temporalio/workflow';
-import { NodeId, NodeType, Node, Edge, Graph, RunState, RunNodeInput, NeededInput, ProvidedInput, NodesStatus } from '../types';
+import { NodeId, NodeType, Node, Edge, Graph, RunState, RunNodeInput, NeededInput, ProvidedInput, NodeStatuses } from '../types';
 import { Activities, NodeStepResult, Transcript } from '../activities/createActivities';
 import { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai';
 
@@ -19,7 +19,7 @@ function initRunState(graph: Graph, prompt?: any): RunState {
 
 export const receiveInput = defineSignal<[ProvidedInput[]]>('receiveInput');
 export const getNeededInput = defineQuery<NeededInput[]>('getNeededInput');
-export const getNodesStatus = defineQuery<NodesStatus>('getNodesStatus');
+export const getNodeStatuses = defineQuery<NodeStatuses>('getNodeStatuses');
 export const getNodeOutput = defineQuery<Record<string, any>, [NodeId]>('getNodeOutput');
 export const getTranscripts = defineQuery<Array<[NodeId, Transcript]>, [number]>('getTranscripts');
 
@@ -41,7 +41,7 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
     resolved.forEach(([n, p]) => n.resolve(p));
   });
   setHandler(getNeededInput, () => neededInput);
-  setHandler(getNodesStatus, () => state.status);
+  setHandler(getNodeStatuses, () => state.status);
   setHandler(getNodeOutput, (nodeId: NodeId) => state.outputs[nodeId]);
   setHandler(getTranscripts, (offset: number) => transcripts.slice(offset || 0));
 

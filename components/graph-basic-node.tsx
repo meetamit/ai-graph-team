@@ -27,26 +27,31 @@ const nodeVariants = cva(
   },
 );
 
-export default function GraphBasicNode({ id, type, data, selected }: { id: string, type: string, data: any, selected: boolean }) {
+export default function GraphBasicNode({ 
+  id, type, data, selected, 
+}: { 
+  id: string, type: string, data: any, selected: boolean, 
+}) {
+  const { output, status } = data;
   return <>
     <Handle type="target" position={Position.Top} />
     <div
-      className={cn('w-[200px]', nodeVariants({ status: data.status, selected }), `node-status-${data.status}`)}
+      className={cn('w-[200px]', nodeVariants({ status: status as any, selected }), `node-status-${status}`)}
       data-gnid={id}
       data-gntype={type}
     >
-      <div className="text-m">{data.label}</div>
-      <div className="text-xs">{data.output && ['done', 'error'].includes(data.status) && (
-        data.output.message && data.output.data
+      <div className="text-m">{data.def.name}</div>
+      <div className="text-xs">{output && ['done', 'error'].includes(status) && (
+        output.message && output.data
           ? <>
-              <div>{data.output.message}</div>
-              <JsonView data={data.output.data} style={defaultStyles} shouldExpandNode={collapseAllNested} />
+              <div>{output.message}</div>
+              <JsonView data={output.data} style={defaultStyles} shouldExpandNode={collapseAllNested} />
             </>
-        : data.output.type === 'text'
-          ? <div>{data.output.text}</div>
-        : data.output.error
-          ? <div>{data.output.error}</div>
-          : <JsonView data={data.output} />
+        : output.type === 'text'
+          ? <div>{output.text}</div>
+        : output.error
+          ? <div>{output.error}</div>
+          : <JsonView data={output} />
       )}</div>
     </div>
     <Handle type="source" position={Position.Bottom} />

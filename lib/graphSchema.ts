@@ -1,26 +1,25 @@
 import { z } from "zod";
 
+// Database schema - matches packages/runner/src/types.ts
 export const NodeSchema = z.object({
   id: z.string(),
-  type: z.string().optional(),
-  data: z.record(z.string(), z.unknown()),
-  position: z.object({
-    x: z.number(),
-    y: z.number()
-  })
+  type: z.enum(['input', 'llm', 'router']),
+  name: z.string(),
+  intent: z.string().optional(),
 });
 
 export const EdgeSchema = z.object({
-  id: z.string(),
-  source: z.string(),
-  target: z.string(),
-  label: z.string().optional(),
-  data: z.record(z.string(), z.any()).optional(),
+  from: z.string(),
+  to: z.string(),
 });
 
 export const GraphSchema = z.object({
   nodes: z.array(NodeSchema),
   edges: z.array(EdgeSchema),
+  layouts: z.record(z.string(), z.object({
+    x: z.number(),
+    y: z.number()
+  })).optional(),
 });
 
 export type GraphJSON = z.infer<typeof GraphSchema>;
@@ -30,28 +29,54 @@ export const EMPTY_GRAPH: GraphJSON = { nodes: [], edges: [] };
 // A friendly starter template for new graphs
 export const STARTER_GRAPH: GraphJSON = {
   nodes: [
-    { id: "user_input",       type: "input", data: { label: "User Input", }, position: { x: 250, y: 50 } },
-    { id: "position_for",     type: "llm",   data: { label: "For", },        position: { x: 50,  y: 150 } },
-    { id: "position_against", type: "llm",   data: { label: "Against", },    position: { x: 450, y: 150 } },
-    { id: "judge",            type: "llm",   data: { label: "Judge", },      position: { x: 250, y: 250 } },
+    {
+      id: "user_input",
+      type: "input",
+      name: "User Input",
+      intent: `Collect the user's proposal/topic or question to be debated. Pass this text unchanged to downstream nodes.`,
+    },
+    {
+      id: "position_for",
+      type: "llm",
+      name: "Position For",
+      intent: `Given the user's proposal, argue IN FAVOR. Produce 3 concise points supporting the proposal, each 1–2 sentences.`,
+    },
+    {
+      id: "position_against",
+      type: "llm",
+      name: "Position Against",
+      intent: `Given the user's proposal, argue AGAINST it. Produce 3 concise points opposing the proposal, each 1–2 sentences.`,
+    },
+    {
+      id: "judge",
+      type: "llm",
+      name: "Judge & Summary",
+      intent: `Read the FOR and AGAINST points. Write a brief, neutral synthesis and declare which side is stronger (for/against/tie) with a one-sentence justification.`,
+    },
   ],
   edges: [
-    { id: "e1", source: "user_input",       target: "position_for" },
-    { id: "e2", source: "user_input",       target: "position_against" },
-    { id: "e3", source: "position_for",     target: "judge" },
-    { id: "e4", source: "position_against", target: "judge" },
+    { from: "user_input", to: "position_for" },
+    { from: "user_input", to: "position_against" },
+    { from: "position_for", to: "judge" },
+    { from: "position_against", to: "judge" },
   ],
+  layouts: {
+    "user_input": { x: 250, y: 20 },
+    "position_for": { x: 50, y: 170 },
+    "position_against": { x: 450, y: 170 },
+    "judge": { x: 250, y: 320 },
+  },
 };
 
 import type {
-  NodeId, NodeStatus, NodesStatus, NeededInput, ProvidedInput, 
+  NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, 
   GraphStatusEvent, GraphNodeOutputEvent, GraphNeededInputEvent, GraphTranscriptEvent,
   ModelMessage, AssistantModelMessage, UserModelMessage, SystemModelMessage, ToolModelMessage,
   ToolCallPart, ToolResultPart, TextPart,
 } from '@ai-graph-team/runner';
 import { GraphRun } from "./db/schema";
 
-export type { NodeId, NodeStatus, NodesStatus, NeededInput, ProvidedInput };
+export type { NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput };
 
 export type GraphRunStatusEvent = GraphStatusEvent;
 export type GraphRunNodeOutputEvent = GraphNodeOutputEvent;

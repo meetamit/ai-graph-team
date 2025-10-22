@@ -1,6 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import { Graph } from '@/lib/db/schema';
-import { NodeId, NodeStatus, NodesStatus } from '@/lib/graphSchema';
+import { NodeId, NodeStatus, NodeStatuses } from '@/lib/graphSchema';
 
 export class GraphPage {
   constructor(private page: Page) {}
@@ -45,12 +45,12 @@ export class GraphPage {
   async runGraph(title: string) {
     await this.getRunButton().click();
   }
-  async expectNodesStatus(expected: any, timeout = 10_000): Promise<void> {
+  async expectNodeStatuses(expected: any, timeout = 10_000): Promise<void> {
     await expect
       .poll(() => this.collectNodeStatuses(), { timeout })
       .toMatchObject(expected);
   }
-  async collectNodeStatuses(): Promise<NodesStatus> {
+  async collectNodeStatuses(): Promise<NodeStatuses> {
     return await this.page.$$eval('[data-gnid]', (els) => {
       const entries = Array.from(els).map((el) => {
         const id: NodeId =
@@ -62,7 +62,7 @@ export class GraphPage {
         const status: NodeStatus = statusClass?.replace('node-status-', '') as NodeStatus;
         return [id, status];
       });
-      return Object.fromEntries(entries) as NodesStatus;
+      return Object.fromEntries(entries) as NodeStatuses;
     });  
   }
 
