@@ -134,9 +134,6 @@ export class GraphWorkflowClient {
         if (lastNeeded.length !== neededInput?.length || lastNeeded.some((n, i) => n.nodeId !== neededInput?.[i]?.nodeId)) {
           yield { type: 'needed', payload: neededInput };
         }
-        if (Object.values(status).every(s => s === 'done')) {
-          break;
-        }
         lastNeeded = neededInput;
       }
       
@@ -151,6 +148,10 @@ export class GraphWorkflowClient {
       }
 
       lastStatus = status;
+
+      if (Object.values(status).every(s => s === 'done')) {
+        break;
+      }
 
       await new Promise(resolve => setTimeout(resolve, 500));
     }

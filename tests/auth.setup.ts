@@ -6,7 +6,7 @@ import { expect, test as setup } from '@playwright/test';
 const authFile = path.join(__dirname, '../playwright/.auth/session.json');
 
 setup('authenticate', async ({ page }) => {
-  const testEmail = `test-${getUnixTime(new Date())}@playwright.com`;
+  const testEmail = `test-setup-${getUnixTime(new Date())}@playwright.com`;
   const testPassword = randomUUID().substring(0, 16);
 
   await page.goto('http://localhost:3000/register');

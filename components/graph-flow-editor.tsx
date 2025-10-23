@@ -27,6 +27,7 @@ type ReactFlowGraphJSON = {
       status: string;
       output: any;
     };
+    selected: boolean;
     position: { x: number; y: number };
   }[];
   edges: { id: string; source: string; target: string }[];
@@ -43,10 +44,16 @@ function toReactFlow(
   dbGraph: GraphJSON, 
   nodeStatuses?: Record<string, string>, 
   nodeOutputs?: Record<string, any>,
+  currentGraph?: ReactFlowGraphJSON,
 ): ReactFlowGraphJSON {
+  const existingById = (currentGraph?.nodes ?? []).reduce((acc, node) => {
+    acc[node.id] = node;
+    return acc;
+  }, {} as Record<string, ReactFlowGraphJSON["nodes"][number]>);
   const nodes = dbGraph.nodes.map(node => ({
     id: node.id,
     type: node.type,
+    selected: existingById[node.id]?.selected ?? false,
     data: {
       def: node,
       status: nodeStatuses?.[node.id] || 'unknown',
@@ -80,11 +87,11 @@ function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, n
   const [isDragging, setIsDragging] = useState(false);
 
   useOnSelectionChange({ onChange: useCallback(({ nodes: [node] }: { nodes: Node[] }) => {
-    onSelectNode && !isDragging && onSelectNode(node as Node);
+    onSelectNode && !isDragging && onSelectNode(node?.data.def as Node);
   }, [onSelectNode, isDragging]) });
   
   useEffect(
-    () => { setGraph(toReactFlow(initialValue, nodeStatuses, nodeOutputs)); }, 
+    () => { setGraph(graph => toReactFlow(initialValue, nodeStatuses, nodeOutputs, graph)); }, 
     [initialValue, nodeStatuses, nodeOutputs],
   );
 
@@ -97,7 +104,6 @@ function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, n
   );
   
   const handleNodeDragStart = useCallback(() => {
-    console.log("handleNodeDragStart");
     setIsDragging(true); 
   }, []);
   const handleNodeDragStop = useCallback(() => {

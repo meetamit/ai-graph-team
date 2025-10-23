@@ -1,6 +1,13 @@
 export type NodeId = string;
 export type NodeType = 'input' | 'llm' | 'router';
-export type Node = { id: NodeId; type: NodeType; name: string; intent?: string; };
+export type Node = {
+  id: NodeId;
+  type: NodeType; 
+  name: string;
+  intent?: string;
+  instructions?: string[];
+  output_schema?: any;
+};
 export type Edge = { from: NodeId; to: NodeId };
 export type Graph = { nodes: Node[]; edges: Edge[] };
 

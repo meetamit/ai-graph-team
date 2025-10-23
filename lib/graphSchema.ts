@@ -6,6 +6,8 @@ export const NodeSchema = z.object({
   type: z.enum(['input', 'llm', 'router']),
   name: z.string(),
   intent: z.string().optional(),
+  instructions: z.array(z.string()).optional(),
+  output_schema: z.any().optional(),
 });
 
 export const EdgeSchema = z.object({

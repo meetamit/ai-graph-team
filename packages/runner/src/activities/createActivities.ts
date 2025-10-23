@@ -5,7 +5,6 @@ import {
   generateText, stepCountIs, LanguageModel, tool,
   ModelMessage, TextPart, ToolCallPart, ToolResultPart, Tool, 
 } from 'ai';
-import { MockLanguageModelV3 } from 'ai/test';
 import { z } from 'zod';
 
 export type Activities = ReturnType<typeof createActivities>;

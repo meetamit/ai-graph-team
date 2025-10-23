@@ -48,6 +48,17 @@ export default function EditGraph({ graph }: { graph: Graph }) {
     !creating &&saveGraphDebounced(undefined, e.target.value);
   }, [setTitle, saveGraphDebounced, data]);
 
+  const handleNodeChange = useCallback((updatedNode: GraphJSON['nodes'][number]) => {
+    const updatedData = {
+      ...data,
+      nodes: data.nodes.map(node => 
+        node.id === updatedNode.id ? updatedNode : node
+      )
+    };
+    setData(updatedData);
+    !creating && saveGraphDebounced(updatedData);
+  }, [data, setData, saveGraphDebounced, creating]);
+
   const selectedNodeMessages: GraphNodeMessageGroup[] = useMemo(() => {
     return transcripts
       .filter(([nodeId]) => nodeId === selectedNode?.id)
@@ -140,6 +151,8 @@ export default function EditGraph({ graph }: { graph: Graph }) {
 
         {selectedNode && <NodeSidebar 
           messageGroups={selectedNodeMessages}
+          selectedNode={selectedNode}
+          onNodeChange={handleNodeChange}
         />}
 
         {isInputFormOpen && <InputFormModal
