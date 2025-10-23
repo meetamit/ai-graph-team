@@ -77,10 +77,11 @@ function fromReactFlow(rfGraph: ReactFlowGraphJSON): GraphJSON {
 
 function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, nodeOutputs }: Props) {
   const [graph, setGraph] = useState<ReactFlowGraphJSON>(toReactFlow(initialValue, nodeStatuses, nodeOutputs));
+  const [isDragging, setIsDragging] = useState(false);
 
   useOnSelectionChange({ onChange: useCallback(({ nodes: [node] }: { nodes: Node[] }) => {
-    onSelectNode && onSelectNode(node as Node);
-  }, [onSelectNode]) });
+    onSelectNode && !isDragging && onSelectNode(node as Node);
+  }, [onSelectNode, isDragging]) });
   
   useEffect(
     () => { setGraph(toReactFlow(initialValue, nodeStatuses, nodeOutputs)); }, 
@@ -95,17 +96,22 @@ function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, n
     [],
   );
   
-  const propagateChanges = useCallback(
-    () => onChange?.(fromReactFlow(graph)),
-    [graph, onChange]
-  );
-  
+  const handleNodeDragStart = useCallback(() => {
+    console.log("handleNodeDragStart");
+    setIsDragging(true); 
+  }, []);
+  const handleNodeDragStop = useCallback(() => {
+    onChange?.(fromReactFlow(graph)),
+    setIsDragging(false);
+  }, [graph, onChange]);
+
   return (
     <ReactFlow
       nodes={graph.nodes}
       edges={graph.edges}
       onNodesChange={onNodesChange}
-      onNodeDragStop={propagateChanges}
+      onNodeDragStart={handleNodeDragStart}
+      onNodeDragStop={handleNodeDragStop}
       nodeTypes={nodeTypes}
     >
       <Background gap={15} size={1.5} />

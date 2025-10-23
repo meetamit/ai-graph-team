@@ -11,6 +11,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useGraph } from "@/hooks/use-graph";
 import { EditIcon } from "./icons";
+import { useCallback } from "react";
 
 export default function EditGraph({ graph }: { graph: Graph }) {
   // Ensure the graph data has the proper structure with layouts
@@ -27,11 +28,25 @@ export default function EditGraph({ graph }: { graph: Graph }) {
     selectedNode, setSelectedNode, transcripts,
     title, setTitle, data, setData, saving, deleting, error, creating,
     nodeStatuses, nodeOutputs,
-    saveGraph, deleteGraph, runGraph,
+    saveGraph, saveGraphDebounced, deleteGraph, runGraph,
   } = useGraph(graph);
 
   const [isTextEditorOpen, setIsTextEditorOpen] = useState(false);
   const [isInputFormOpen, setIsInputFormOpen] = useState(false);
+
+  const handleChange = useCallback((data: GraphJSON) => {
+    setData(data);
+    !creating &&saveGraphDebounced(data);
+  }, [setData, saveGraph, data]);
+
+  const handleSave = useCallback(() => {
+    saveGraph();
+  }, [saveGraph]);
+
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+    !creating &&saveGraphDebounced(undefined, e.target.value);
+  }, [setTitle, saveGraphDebounced, data]);
 
   const selectedNodeMessages: GraphNodeMessageGroup[] = useMemo(() => {
     return transcripts
@@ -53,7 +68,7 @@ export default function EditGraph({ graph }: { graph: Graph }) {
           <Input
             value={title}
             placeholder="Title"
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={handleTitleChange}
             className="w-64"
           />
         </div>
@@ -61,10 +76,10 @@ export default function EditGraph({ graph }: { graph: Graph }) {
         <div className="flex items-center gap-2">
           <Button
             disabled={saving || !title}
-            onClick={saveGraph}
+            onClick={handleSave}
             size="sm"
           >
-            {saving ? "Saving..." : creating ?"Create Graph" : "Save"}
+            {saving ? "Saving..." : creating ? "Create Graph" : "Save"}
           </Button>
 
           {!creating && (
@@ -94,14 +109,14 @@ export default function EditGraph({ graph }: { graph: Graph }) {
           {isTextEditorOpen && <div className="flex-grow flex-shrink min-w-[50%] max-w-2xl h-full border-r">
             <GraphTextEditor 
               initialValue={data} 
-              onChange={setData}
+              onChange={handleChange}
               className="h-full"
             />
           </div>}
           <div className="flex-grow flex-shrink min-w-[50%]">
             <GraphFlowEditor 
               initialValue={data} 
-              onChange={setData} 
+              onChange={handleChange} 
               onSelectNode={setSelectedNode}
               nodeStatuses={nodeStatuses}
               nodeOutputs={nodeOutputs}

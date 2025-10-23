@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Graph, GraphRun } from "@/lib/db/schema";
 import type { 
@@ -19,6 +19,14 @@ function onGraphRunEvent<T extends GraphRunEvent['type']>(
   });
 }
 
+let timeout: NodeJS.Timeout;
+const debounce = (func: (...args: any[]) => void, wait: number) => {
+  return (...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
+
 export function useGraph(graph: Graph) {
   const router = useRouter();
   const [title, setTitle] = useState(graph.title);
@@ -34,14 +42,14 @@ export function useGraph(graph: Graph) {
   const [nodeOutputs, setNodeOutputs] = useState<Record<NodeId, any>>({});
   const creating = graph.id === '';
 
-  const saveGraph = async () => {
+  const saveGraph = useCallback(async (savedData: GraphJSON = data, savedTitle: string = title) => {
     try {
       setSaving(true);
       setError(null);
       const res = await fetch(`/api/graph${creating ? '' : `/${graph.id}`}`, {
         method: creating ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, data }),
+        body: JSON.stringify({ title: savedTitle, data: savedData }),
       });
       if (!res.ok) throw new Error(await res.text());
 
@@ -56,7 +64,12 @@ export function useGraph(graph: Graph) {
     } finally {
       setSaving(false);
     }
-  }
+  }, [title, data, creating, graph.id, router]);
+
+  const saveGraphDebounced = useCallback(
+    debounce(saveGraph, 1000),
+    [saveGraph],
+  );
 
   const deleteGraph = async () => {
     if (!confirm("Delete this graph?")) return;
@@ -146,6 +159,6 @@ export function useGraph(graph: Graph) {
     selectedNode, setSelectedNode, transcripts,
     title, setTitle, data, setData, saving, setSaving, deleting, setDeleting, error, setError, creating,
     nodeStatuses, nodeOutputs,
-    saveGraph, deleteGraph, runGraph,
+    saveGraph, saveGraphDebounced, deleteGraph, runGraph,
   }), [neededInput, submitNeededInput, selectedNode, setSelectedNode, title, setTitle, data, setData, saving, setSaving, deleting, setDeleting, error, setError, creating, nodeStatuses, nodeOutputs]);
 }
