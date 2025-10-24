@@ -2,6 +2,8 @@ import { proxyActivities, log, defineSignal, defineQuery, setHandler, condition,
 import { NodeId, NodeType, Node, Edge, Graph, RunState, RunNodeInput, NeededInput, ProvidedInput, NodeStatuses } from '../types';
 import { Activities, NodeStepResult, Transcript } from '../activities/createActivities';
 import { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai';
+import { ZodError } from 'zod';
+import { zodFromSchema } from '../validation';
 
 const { makeToolCall, takeNodeFirstStep, takeNodeFollowupStep } = proxyActivities<Activities>({
   startToCloseTimeout: '1 minute',
@@ -111,6 +113,21 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
               state.status[input.node.id] = 'running';
             } else if (toolCall.toolName === 'resolveNodeOutput') {
               // Output resolution is handled by setting `resultObject` —— not tool call
+              if (input.node.output_schema) {
+                try {
+                  log.info('nodeokokok',input.node)
+                  const validator = zodFromSchema(input.node.output_schema);
+                  log.info('validator', input.node.output_schema);
+                  const result = validator.parse(toolCall.input);
+                  log.info('result',{result});
+                } catch (error) {
+                  if (error instanceof ZodError) {
+                    console.error('Validation errors:', error);
+                  } else {
+                    throw error;
+                  }
+                }
+              }
               resultObject = Object.assign(resultObject || {}, toolCall.input);
               toolResult = {
                 type: 'tool-result',

@@ -1,7 +1,7 @@
 "use server";
 
 import React from "react";
-import { STARTER_GRAPH } from "@/lib/graphSchema";
+import { STARTER_GRAPH, PRESCRIPTIVE_GRAPH } from "@/lib/graphSchema";
 import EditGraph from "@/components/edit-graph";
 
 export default async function NewGraphPage() {

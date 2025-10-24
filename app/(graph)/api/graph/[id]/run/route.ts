@@ -82,21 +82,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const runnerGraph: Graph = {
-    nodes: (graph.data as GraphJSON).nodes.map((node) => ({
-      id: node.id,
-      type: node.type as NodeType,
-      name: node.name,
-      intent: node.intent,
-    })),
-    edges: (graph.data as GraphJSON).edges.map((edge) => ({
-      from: edge.from,
-      to: edge.to,
-    })),
-  };
-
   const workflowId = `team-run-${graph.id}-${Date.now()}`;
-  runner.runWorkflow(runnerGraph, undefined, workflowId)
+  runner.runWorkflow(graph.data as Graph, undefined, workflowId)
   const [graphRun] = await createGraphRun({
     workflowId: workflowId,
     graphId: graph.id,

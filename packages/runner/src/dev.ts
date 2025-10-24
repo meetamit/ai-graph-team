@@ -4,6 +4,7 @@ import { Connection } from '@temporalio/client';
 import { Worker, NativeConnection } from '@temporalio/worker';
 import { createActivities } from './activities/createActivities';
 import { GraphWorkflowClient, NeededInput, ProvidedInput } from './GraphWorkflowClient';
+import { withUserInput } from './models';
 import dotenv from 'dotenv';
 dotenv.config({quiet: true});
 
@@ -15,7 +16,7 @@ async function startWorker() {
   const worker = await Worker.create({
     connection,
     workflowsPath: require.resolve('./workflows'),
-    activities: createActivities({ model: openai('gpt-5-nano')}),
+    activities: createActivities({ model: withUserInput() }),//{ model: openai('gpt-5-nano')}),
     taskQueue: 'graph-queue',
     namespace: process.env.TEMPORAL_NAMESPACE || 'default',
   });

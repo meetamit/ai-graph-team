@@ -1,5 +1,7 @@
 import { MockLanguageModelV3 } from 'ai/test';
 import { LanguageModel, TextPart } from 'ai';
+import { Node as NodeType } from '../types';
+import { fixtureFromSchema } from './generate';
 
 export default function deterministicLanguageModel(): LanguageModel {
   return new MockLanguageModelV3({
@@ -8,18 +10,24 @@ export default function deterministicLanguageModel(): LanguageModel {
       const { prompt, tools } = args;
 
       // Extract node params from the prompt message where it was injected by the workflow engine
-      const { id: nodeId, type: nodeType } = JSON.parse((prompt[1].content[1] as TextPart).text as string)
+      const { id: nodeId, type: nodeType, output_schema } = JSON.parse((prompt[1].content[1] as TextPart).text as string) as NodeType;
       
       if (nodeType === 'input') {
         if (prompt.length === 2) {
-          // Initial request for input node; returns tool call to collect user input
           return {
             usage: {},
             finishReason: 'tool-calls',
-            content: [
-              { type: 'tool-call', toolCallId: `call_by_${nodeId}_1`, toolName: 'collectUserInput', input: JSON.stringify({ name: `${nodeId}_1`, prompt: 'Question 1', default: 'Default 1' }) },
-              { type: 'tool-call', toolCallId: `call_by_${nodeId}_2`, toolName: 'collectUserInput', input: JSON.stringify({ name: `${nodeId}_2`, prompt: 'Question 2', default: 'Default 2' }) },
-            ],
+            content: Object.entries(
+              output_schema?.properties || {
+                1: { description: 'Question 1', default: 'Default 1' },
+                2: { description: 'Question 2', default: 'Default 2' },
+              }
+            ).map(([key, value]: [string, any]) => ({
+              type: 'tool-call',
+              toolCallId: `call_by_${nodeId}_${key}`,
+              toolName: 'collectUserInput',
+              input: JSON.stringify({ name: `${nodeId}_${key}`, prompt: value.description, default: value.default }) 
+            })),
           };
         } else if (prompt.length === 4) {
           // Extract tool results from the prompt to include in the mock node output
@@ -46,7 +54,9 @@ export default function deterministicLanguageModel(): LanguageModel {
               toolName: 'resolveNodeOutput', 
               input: JSON.stringify({
                 message: `Fulfilled the node '${nodeId}'`,
-                data: { x: 100, y: 200, z: 300 }
+                data: output_schema
+                  ? fixtureFromSchema(output_schema)
+                  : { x: 100, y: 200, z: 300 }
               }) 
             },
           ],
