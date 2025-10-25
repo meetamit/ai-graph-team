@@ -1,6 +1,7 @@
 import { log } from '@temporalio/activity';
 import { Node } from '../types';
 import simpleLanguageModel from '../models/simple';
+import { zodFromSchema } from '../json-schema-to-zod';
 import {
   generateText, stepCountIs, LanguageModel, tool,
   ModelMessage, TextPart, ToolCallPart, ToolResultPart, Tool, 
@@ -39,14 +40,6 @@ const tools: Record<string, Tool> = {
       default: z.string().optional().describe('The default value for the input'),
     }),
   }),
-
-  resolveNodeOutput: tool({
-    description: 'Resolve the final output of a node once its work is done',
-    inputSchema: z.object({
-      message: z.string().describe('Human readable message sumarizing the work done by the node'),
-      data: z.any().describe('The output of the node'),
-    }),
-  })
 };
 
 type Dependencies = {
@@ -56,17 +49,38 @@ type Dependencies = {
 };
 
 export function createActivities(deps: Dependencies = {}) {
-  async function takeNodeStep(input: NodeStepInput): Promise<NodeStepResult> {
+  async function takeNodeStep(input: NodeStepInput): Promise<NodeStepResult> {    
     if (deps.nodeStepImpl) { return await deps.nodeStepImpl(input); }
+
+    // Add node-specific tools to the available tools
+    const runTools: Record<string, Tool> = {
+      ...tools,
+      resolveNodeOutput: tool({
+        description: 'Resolve the final output of a node once its work is done',
+        inputSchema: z.object({
+          message: z.string().describe('Human readable message sumarizing the work done by the node'),
+          data: input.node.output_schema
+            ? zodFromSchema(input.node.output_schema)
+            : z.any(),
+        }),
+      }),
+    };
+    
     try {
       const result = await generateText({
         model: deps.model || simpleLanguageModel(), 
         messages: input.transcript,
         stopWhen: stepCountIs(1), // Only allow one step, no followup calls
-        tools,
+        tools: runTools,
       });
 
-      const content = result.content.map(c => (typeof c === 'string' ? { type: 'text', text: c } : c) as TextPart | ToolCallPart);
+      // Check for errors in the generateText output, which could arise from mal-formed tool calls
+      if (result.content.some((c:any) => c.error)) {
+        throw new Error(`Error in generateText output ${JSON.stringify(result.content, null, 2)}`);
+      }
+
+      const content = result.content.map(c =>  typeof c === 'string' ? { type: 'text', text: c } as TextPart : c as ToolCallPart);
+      
       return {
         messages: [{ role: 'assistant', content }],
         finishReason: result.finishReason,

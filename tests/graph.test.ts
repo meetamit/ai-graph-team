@@ -1,6 +1,7 @@
 import { GraphPage } from './pages/graph';
 import { test, expect } from '@playwright/test';
 import { format } from 'date-fns';
+import { PRESCRIPTIVE_GRAPH } from '@/lib/graphSchema';
 
 test.describe('graph activity', () => {
   let graphPage: GraphPage;
@@ -62,6 +63,30 @@ test.describe('graph activity', () => {
       position_against: expect.stringMatching(/pending|running|done/),
       judge:            expect.stringMatching(/pending|running/),
     })
+    await graphPage.expectNodeStatuses({
+      user_input: 'done',
+      position_for: 'done',
+      position_against: 'done',
+      judge: 'done',
+    });
+  });
+
+  test('run a graph with instructions and node_schema', async ({ page }) => {
+    const testTitle = `Test Title 3 — ${format(new Date(), 'MM-dd-yyyy HH:mm:ss')}`;
+    await graphPage.createNewGraph(testTitle, PRESCRIPTIVE_GRAPH);
+
+    await graphPage.runGraph(testTitle);
+    await graphPage.expectNodeStatuses({
+      user_input: 'awaiting',
+      position_for: 'pending',
+      position_against: 'pending',
+      judge: 'pending',
+    });
+
+    await graphPage.fillInputField('proposal', `Should we build a turing complete workflow engine that runs graphs of LLM-backed nodes?`);
+    await graphPage.fillInputField('special_considerations', 'The existence of other workflow engines, possibilities for supporting/monetizing, feasability...');
+    await graphPage.submitInputForm();
+
     await graphPage.expectNodeStatuses({
       user_input: 'done',
       position_for: 'done',

@@ -1,19 +1,20 @@
 import { expect, Page } from '@playwright/test';
 import { Graph } from '@/lib/db/schema';
-import { NodeId, NodeStatus, NodeStatuses } from '@/lib/graphSchema';
+import { GraphJSON, NodeId, NodeStatus, NodeStatuses } from '@/lib/graphSchema';
 
 export class GraphPage {
   constructor(private page: Page) {}
 
-  async createNewGraph(title: string): Promise<Graph> {
+  async createNewGraph(title: string, graphData?: GraphJSON): Promise<Graph> {
     await this.page.goto('/graph/new');
     await this.isSubmitDisabled();
-    await this.setGraphTitle(title);
+    await this.fillGraphTitle(title);
+    if (graphData) { await this.fillGraphData(graphData); }
     await this.isSubmitEnabled();
     await this.submitGraph();
-    const graphData = await this.captureNewGraphData()
-    await this.page.waitForURL(`/graph/${graphData.id}`);
-    return graphData
+    const savedData = await this.captureNewGraphData()
+    await this.page.waitForURL(`/graph/${savedData.id}`);
+    return savedData
   }
   async captureNewGraphData(): Promise<Graph> {
     const response = await this.page.waitForResponse((response) =>
@@ -22,9 +23,20 @@ export class GraphPage {
     return await response.json() as Graph;
   }
   
-  async setGraphTitle(title: string) {
+  async fillGraphTitle(title: string) {
     await this.page.getByPlaceholder('Title').click();
     await this.page.getByPlaceholder('Title').fill(title);
+  }
+  async fillGraphData(graphData: GraphJSON) {
+    await this.page.getByRole('button', { name: 'Edit as Text' }).click();
+
+    const editor = this.page.locator('.cm-editor .cm-content[contenteditable="true"]');
+    await expect(editor).toBeVisible();
+
+    await editor.click();
+    const json = JSON.stringify(graphData);
+    await editor.fill(json);
+    await expect(editor).toHaveText(json, { timeout: 2000 });
   }
   async isSubmitEnabled() {
     await expect(this.getSubmitButton()).toBeEnabled();

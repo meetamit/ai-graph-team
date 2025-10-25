@@ -36,7 +36,7 @@ export default function GraphBasicNode({
   return <>
     <Handle type="target" position={Position.Top} />
     <div
-      className={cn('w-[200px]', nodeVariants({ status: status as any, selected }), `node-status-${status}`)}
+      className={cn('w-[250px]', nodeVariants({ status: status as any, selected }), `node-status-${status}`)}
       data-gnid={id}
       data-gntype={type}
     >
@@ -51,7 +51,7 @@ export default function GraphBasicNode({
           ? <div>{output.text}</div>
         : output.error
           ? <div>{output.error}</div>
-          : <JsonView data={output} />
+          : <JsonView data={output} shouldExpandNode={collapseAllNested} />
       )}</div>
     </div>
     <Handle type="source" position={Position.Bottom} />

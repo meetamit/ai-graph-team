@@ -103,7 +103,6 @@ export class GraphWorkflowClient {
     const handle: WorkflowHandle = await client.workflow.getHandle(workflowId);
     try {
       const description = await handle.describe();
-      if (description?.status?.name === 'FAILED') { return }
       if (description?.status?.name === 'TERMINATED') { return }
     } catch (e) {
       if (e instanceof WorkflowNotFoundError) { return; }
@@ -149,9 +148,10 @@ export class GraphWorkflowClient {
 
       lastStatus = status;
 
-      if (Object.values(status).every(s => s === 'done')) {
-        break;
-      }
+      if (
+        Object.values(status).every(s => s === 'done') || 
+        Object.values(lastStatus).includes('error')
+      ) { break; }
 
       await new Promise(resolve => setTimeout(resolve, 500));
     }

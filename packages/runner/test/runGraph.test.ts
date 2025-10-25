@@ -1,9 +1,9 @@
 import { describe, it, expect } from '@jest/globals';
 import { makeHarness, TestHarness, NeededInput,ProvidedInput } from './helpers/testEnv';
-import { createActivities, NodeStepInput, NodeStepResult, ToolCallInput } from '../src/activities/createActivities';
-import { ToolCallPart, ToolResultPart } from 'ai';
 import { MockLanguageModelV3, } from 'ai/test';
 import sinon from 'sinon';
+import { createActivities, NodeStepInput, NodeStepResult, ToolCallInput } from '../src/activities/createActivities';
+import withUserInput from '../src/models/withUserInput';
 
 describe('Graph workflow', () => {
   const taskQueue = 'test-graph-queue';
@@ -50,7 +50,7 @@ describe('Graph workflow', () => {
     const collectInput = sinon.spy(async (neededInput: NeededInput[]): Promise<ProvidedInput[]> => {
       return neededInput.map(needed => ({
         for: needed,
-        value: `mock value for ${needed.nodeId}`,
+        value: `mock value for ${needed.name}`,
         nodeId: needed.nodeId,
       }));
     });
@@ -58,147 +58,99 @@ describe('Graph workflow', () => {
     h = await makeHarness({
       taskQueue, collectInput,
       workflowsPath: require.resolve('../src/workflows'),
-      activities: createActivities(({
-        model: new MockLanguageModelV3({
-          doGenerate: async (args): Promise<any> => {
-            const { prompt, tools } = args;
-            expect(prompt).toEqual(expect.arrayContaining([
-              {
-                role: 'system',
-                content: expect.stringContaining('You are a node in a DAG-based workflow.'),
-              },
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: '## Node JSON' },
-                  expect.objectContaining({ type: 'text' }),
-                  { type: 'text', text: '## Upstream Inputs JSON' },
-                  expect.objectContaining({ type: 'text' }),
-                  { type: 'text', text: expect.stringContaining('## User Prompt') },
-                  { type: 'text', text: 'Test prompt' },
-                ],
-              },
-            ]));
-
-            switch (++step) {
-              case 0: {
-                return {
-                  usage: {},
-                  finishReason: 'tool-calls',
-                  content: [
-                    { type: 'tool-call', toolCallId: `call_by_user_input_${uniqueId++}`, toolName: 'collectUserInput', input: JSON.stringify({ name: 'user_input_1', prompt: 'Question 1', default: 'Default 1' }) },
-                    { type: 'tool-call', toolCallId: `call_by_user_input_${uniqueId++}`, toolName: 'collectUserInput', input: JSON.stringify({ name: 'user_input_2', prompt: 'Question 2', default: 'Default 2' }) },
-                  ],
-                };
-              }
-              case 1: {
-                expect(prompt).toMatchObject([
-                  { role: 'system' },
-                  { role: 'user' },
-                  {
-                    role: 'assistant',
-                    content: [
-                      { type: 'tool-call' },
-                      { type: 'tool-call' },
-                    ],
-                  },
-                  {
-                    role: 'tool',
-                    content: [
-                      { type: 'tool-result', toolName: 'collectUserInput', output: { type: 'json', value: { for: { name: 'user_input_1', prompt: 'Question 1', default: 'Default 1' }, value: 'mock value for user_input', nodeId: 'user_input' } } },
-                      { type: 'tool-result', toolName: 'collectUserInput', output: { type: 'json', value: { for: { name: 'user_input_2', prompt: 'Question 2', default: 'Default 2' }, value: 'mock value for user_input', nodeId: 'user_input' } } },
-                    ],
-                  },
-                ]);
-                return {
-                  usage: {},
-                  finishReason: 'tool-calls',
-                  content: [
-                    {
-                      type: 'tool-call', 
-                      toolCallId: `call_by_user_input_${uniqueId++}`, 
-                      toolName: 'resolveNodeOutput', 
-                      input: JSON.stringify({
-                        message: 'Collected and structured user inputs',
-                        data: { x: 1, y: 2, z: 3 }
-                      }) 
-                    },
-                  ],
-                };       
-              }
-              case 2:
-              case 3: {
-                return (prompt[1].content[1] as any).text.includes('position_against') ? {
-                  usage: {},
-                  finishReason: 'tool-calls',
-                  content: [
-                    {
-                      type: 'tool-call', 
-                      toolCallId: `call_by_position_against_${uniqueId++}`, 
-                      toolName: 'resolveNodeOutput', 
-                      input: JSON.stringify({
-                        message: 'Constructed the case against the proposal',
-                        data: { x: 10, y: 20, z: 30 }
-                      }) 
-                    },
-                  ],
-                } : {
-                  // test that it handles the case where the node output is set by setting `resultObject` —— not tool call
-                  usage: {},
-                  finishReason: 'stop',
-                  content: [
-                    {
-                      type: 'text',
-                      text: `Constructed the case for the proposal`
-                    }
-                  ],
-                };    
-              }
-              case 4:
-              case 5:
-              case 6: {
-                const nodeId: string = ['judge_synthesis', 'red_team', 'finalize'][step - 4];
-                return {
-                  usage: {},
-                  finishReason: 'tool-calls',
-                  content: [
-                    {
-                      type: 'tool-call', 
-                      toolCallId: `call_by_${nodeId}_${uniqueId++}`, 
-                      toolName: 'resolveNodeOutput', 
-                      input: JSON.stringify({
-                        message: `Fulfilled the node '${nodeId}'`,
-                        data: { x: 100, y: 200, z: 300 }
-                      }) 
-                    },
-                  ],
-                };       
-              } 
-              default: {
-                throw new Error(`Test does not implement doGenerate() for step "${step}\n\nPROMPT:\n\n${JSON.stringify(prompt, null, 2)}`);
-              }
-            }
-          },
-        }),
-      })),
+      activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
     });
 
     const result = await h.runner.runWorkflow(require('./fixtures/graphs/debatePanel.json'), 'Test prompt');
 
     expect(result.outputs).toStrictEqual({
-      user_input:       { message: "Collected and structured user inputs", data: { x: 1, y: 2, z: 3 } },
-      position_against: { message: "Constructed the case against the proposal", data: { x: 10, y: 20, z: 30 } },
-      position_for:     { type: 'text', text: "Constructed the case for the proposal" },// it handled by setting `resultObject` —— not tool call
-      judge_synthesis:  { message: "Fulfilled the node 'judge_synthesis'", data: { x: 100, y: 200, z: 300 } },
-      red_team:         { message: "Fulfilled the node 'red_team'", data: { x: 100, y: 200, z: 300 } },
-      finalize:         { message: "Fulfilled the node 'finalize'", data: { x: 100, y: 200, z: 300 } }
+      user_input: {
+        data: {
+          alternatives: "mock value for alternatives",
+          criteria: "mock value for criteria",
+          constraints: "mock value for constraints",
+          decision_context: "mock value for decision_context",
+          proposal: "mock value for proposal",
+          risk_appetite: "mock value for risk_appetite",
+          stakeholders: "mock value for stakeholders",
+          style_guidelines: "mock value for style_guidelines",
+          word_limits: "mock value for word_limits",
+        },
+        message: "Collected and structured user inputs"
+      },
+      position_against: {
+        message: "Fulfilled the node 'position_against'",
+        data: {
+          argsAgainst: expect.arrayContaining([
+            expect.objectContaining({ 
+              assumptions: expect.arrayContaining([]),
+              claim: expect.stringContaining(''),
+              criteria_impacts: expect.arrayContaining([
+                expect.objectContaining({
+                  criterion: expect.stringContaining(''),
+                  direction: expect.stringContaining(''),
+                  magnitude: expect.stringContaining(''),
+                  reason: expect.stringContaining(''),
+                }),
+              ]),
+              rationale: expect.stringContaining(''),
+              risks: expect.arrayContaining([]),
+            }),
+          ]),
+          top_line: expect.stringContaining(''),
+        },
+      },
+      position_for: {
+        message: "Fulfilled the node 'position_for'",
+        data: {
+          argsFor: expect.arrayContaining([
+            expect.objectContaining({ 
+              assumptions: expect.arrayContaining([]),
+              claim: expect.stringContaining(''),
+            }),
+          ]),
+          top_line: expect.stringContaining(''),
+        },
+      },
+      judge_synthesis: {
+        message: "Fulfilled the node 'judge_synthesis'",
+        data: {
+          scorecard: expect.arrayContaining([]),
+          tentativeRec: expect.arrayContaining([]),
+          tradeoffs: expect.arrayContaining([]),
+          uncertainties: expect.arrayContaining([]),
+        },
+      },
+      red_team: {
+        message: "Fulfilled the node 'red_team'",
+        data: {
+          hard_questions: expect.arrayContaining([]),
+          missing_info: expect.arrayContaining([]),
+          vulnerabilities: expect.arrayContaining([]),
+        },
+      },
+      finalize: expect.objectContaining({
+        message: "Fulfilled the node 'finalize'",
+        data: {
+          decision_memo: expect.stringContaining(''),
+          executive_summary: expect.stringContaining(''),
+          finalRec: expect.arrayContaining([]),
+        },
+      }),
     });
 
     expect(collectInput.calledOnce).toBe(true);
     const callArgs = collectInput.getCall(0).args[0];
     expect(callArgs).toMatchObject([
-      { prompt: 'Question 1' },
-      { prompt: 'Question 2' },
+      { prompt: 'Enter proposal' },
+      { prompt: 'Enter alternatives' },
+      { prompt: 'Enter decision_context' },
+      { prompt: 'Enter criteria' },
+      { prompt: 'Enter constraints' },
+      { prompt: 'Enter risk_appetite' },
+      { prompt: 'Enter stakeholders' },
+      { prompt: 'Enter style_guidelines' },
+      { prompt: 'Enter word_limits' },
     ]);
   }, 20000);
 });

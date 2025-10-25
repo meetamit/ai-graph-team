@@ -2,6 +2,8 @@ import { proxyActivities, log, defineSignal, defineQuery, setHandler, condition,
 import { NodeId, NodeType, Node, Edge, Graph, RunState, RunNodeInput, NeededInput, ProvidedInput, NodeStatuses } from '../types';
 import { Activities, NodeStepResult, Transcript } from '../activities/createActivities';
 import { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai';
+import { zodFromSchema } from '../json-schema-to-zod';
+
 
 const { makeToolCall, takeNodeFirstStep, takeNodeFollowupStep } = proxyActivities<Activities>({
   startToCloseTimeout: '1 minute',
@@ -106,10 +108,18 @@ export async function runGraphWorkflow({graph, prompt}: {graph: Graph, prompt?: 
                   })
                 },
               }
-
               // Set the node status back to running after the input is collected
               state.status[input.node.id] = 'running';
             } else if (toolCall.toolName === 'resolveNodeOutput') {
+              if (input.node.output_schema) {
+                try {
+                  const validator = zodFromSchema(input.node.output_schema);
+                  validator.parse((toolCall.input as any).data);
+                } catch (error) {
+                  console.log('Validation errors: ' + error);
+                  throw error;
+                }
+              }
               // Output resolution is handled by setting `resultObject` —— not tool call
               resultObject = Object.assign(resultObject || {}, toolCall.input);
               toolResult = {

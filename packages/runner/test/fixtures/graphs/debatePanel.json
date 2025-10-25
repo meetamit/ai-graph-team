@@ -6,84 +6,41 @@
       "name": "User Inputs",
       "type": "input",
       "description": "Decision brief and evaluation frame provided by the user.",
-      "inputs": {
-        "proposal": "Concise statement of the decision to make. Example: 'Adopt library X for front-end state management in Q4.'",
-        "alternatives": [
-          "Option A",
-          "Option B",
-          "Status Quo"
-        ],
-        "decision_context": {
-          "scope": "Team or org scope affected",
-          "time_horizon": "Near-term vs long-term emphasis",
-          "dependencies": [
-            "Backend Y",
-            "Browser support Z"
-          ]
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "proposal": { "type": "string" },
+          "alternatives": { "type": "string" },
+          "decision_context": { "type": "string" },
+          "criteria": { "type": "string" },
+          "constraints": { "type": "string" },
+          "risk_appetite": { "type": "string" },
+          "stakeholders": { "type": "string" },
+          "style_guidelines": { "type": "string" },
+          "word_limits": { "type": "string" }
         },
-        "criteria": [
-          {
-            "name": "Developer Productivity",
-            "weight": 0.3
-          },
-          {
-            "name": "Performance",
-            "weight": 0.25
-          },
-          {
-            "name": "Reliability",
-            "weight": 0.2
-          },
-          {
-            "name": "Maintainability",
-            "weight": 0.15
-          },
-          {
-            "name": "Hiring/Community",
-            "weight": 0.1
-          }
-        ],
-        "constraints": [
-          "No breaking changes for customers this quarter",
-          "Support SSR and React 18",
-          "Security review required"
-        ],
-        "risk_appetite": "Low, medium, or high",
-        "stakeholders": [
-          {
-            "role": "Frontend Lead",
-            "concerns": [
-              "migration cost",
-              "learning curve"
-            ]
-          },
-          {
-            "role": "SRE",
-            "concerns": [
-              "operational risk",
-              "observability"
-            ]
-          }
-        ],
-        "style_guidelines": "Tone for the final memo, e.g., 'executive crisp' or 'engineering deep dive'",
-        "word_limits": {
-          "arguments": 120,
-          "summary": 120,
-          "memo": 600
-        }
-      },
-      "outputs": {
-        "frame": {
-          "proposal": "{{inputs.proposal}}",
-          "alternatives": "{{inputs.alternatives}}",
-          "decision_context": "{{inputs.decision_context}}",
-          "criteria": "{{inputs.criteria}}",
-          "constraints": "{{inputs.constraints}}",
-          "risk_appetite": "{{inputs.risk_appetite}}",
-          "stakeholders": "{{inputs.stakeholders}}",
-          "style_guidelines": "{{inputs.style_guidelines}}",
-          "word_limits": "{{inputs.word_limits}}"
-        }
+        "Xproperties": {
+          "proposal": { "type": "string" },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "decision_context": { "type": "object", "properties": { "scope": { "type": "string" }, "time_horizon": { "type": "string" }, "dependencies": { "type": "array", "items": { "type": "string" } } } },
+          "criteria": { "type": "array", "items": { "type": "string" } },
+          "constraints": { "type": "array", "items": { "type": "string" } },
+          "risk_appetite": { "type": "string" },
+          "stakeholders": { "type": "array", "items": { "type": "string" } },
+          "style_guidelines": { "type": "string" },
+          "word_limits": { "type": "object", "properties": { "arguments": { "type": "number" }, "summary": { "type": "number" }, "memo": { "type": "number" } } }
+        },
+        "required": [
+          "proposal",
+          "alternatives",
+          "decision_context",
+          "criteria",
+          "constraints",
+          "risk_appetite",
+          "stakeholders",
+          "style_guidelines",
+          "word_limits"
+        ]
       }
     },
     {
