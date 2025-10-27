@@ -1,5 +1,5 @@
 {
-  "id": "64600af5-6a05-4569-ac0d-cb6c33aca92a",
+  "id": "f4f3230d-b248-4cb3-9d6b-80ed85371951",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -103,11 +103,29 @@
           "notNull": true,
           "default": "'running'"
         },
-        "data": {
-          "name": "data",
+        "graph": {
+          "name": "graph",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
+        },
+        "outputs": {
+          "name": "outputs",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "statuses": {
+          "name": "statuses",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transcripts": {
+          "name": "transcripts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

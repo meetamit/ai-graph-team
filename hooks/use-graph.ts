@@ -6,6 +6,7 @@ import type {
   GraphRunEvent, GraphRunStatusEvent, GraphRunNeededInputEvent,GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunErrorEvent, GraphRunTranscriptEvent,
   NodeStatuses, GraphNodeMessage,
 } from "@/lib/graphSchema";
+import { toast } from "@/components/toast";
 
 type GraphRunPayloadByType<T extends GraphRunEvent['type']> = Extract<GraphRunEvent, { type: T }>['payload'];
 
@@ -85,11 +86,26 @@ export function useGraph(graph: Graph) {
     }
   }
 
-  const runGraph = async () => {
-    const res = await fetch(`/api/graph/${graph.id}/run`, { method: "POST" });
-    if (!res.ok) throw new Error(await res.text());
-    setRun(await res.json());
-    updateRun();
+  const runGraph = async (fromNode?: string) => {
+    try {
+      const res = await fetch(`/api/graph/${graph.id}/run`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromNode }),
+      });
+      if (!res.ok) {
+        const errorMessage = await res.text();
+        toast({ type: 'error', description: errorMessage || `Failed to run graph (${res.status})` });
+        throw new Error(errorMessage);
+      }
+      setRun(await res.json());
+      updateRun();
+    } catch (e: any) {
+      // If it's not already shown via toast (non-HTTP errors), show it
+      if (!e.message) {
+        toast({ type: 'error', description: "Failed to run graph" });
+      }
+    }
   }
 
   const submitNeededInput = async (inputs: ProvidedInput[]) => {
@@ -127,7 +143,11 @@ export function useGraph(graph: Graph) {
     });
     
     onGraphRunEvent(eventSource, 'run', (graphRun: GraphRunRecordEvent['payload']) => {
+      console.log('RUN', graphRun);
       setRun(graphRun);
+      if (graphRun?.outputs    ) { setNodeOutputs(graphRun.outputs as Record<NodeId, any>); }
+      if (graphRun?.statuses   ) { setNodeStatuses(graphRun.statuses as NodeStatuses); }
+      if (graphRun?.transcripts) { setTranscripts(graphRun.transcripts as Array<[NodeId, GraphNodeMessage[]]>); }
     });
     
     onGraphRunEvent(eventSource, 'done', () => {

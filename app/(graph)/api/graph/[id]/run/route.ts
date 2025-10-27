@@ -5,17 +5,21 @@ import { auth } from "@/app/(auth)/auth";
 import { getGraphById, createGraphRun, getLatestGraphRun, getGraphRunById, updateGraphRun } from "@/lib/db/queries";
 import {
   GraphWorkflowClient, 
-  Graph, NodeType,
-  NeededInput, ProvidedInput, 
+  Graph, NodeType, NodeId,
+  NeededInput, ProvidedInput,
+  NodeStatuses, 
 } from '@ai-graph-team/runner';
-import { GraphJSON } from "@/lib/graphSchema";
-import { GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent } from "@/lib/graphSchema";
+import {
+  GraphJSON, GraphNodeMessage,
+  GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent
+} from "@/lib/graphSchema";
 
 const runner: GraphWorkflowClient = new GraphWorkflowClient({
   taskQueue: 'graph-queue',
   idBase: 'team-run-',
 });
 
+const graphRunMask = { statuses: undefined, transcripts: undefined, outputs: undefined };
 // Stream events for a graph run
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
@@ -43,16 +47,40 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       );
     }
     try {
-      if (graphRun) {
-        await sendEvent({ type: 'run', payload: graphRun } as GraphRunRecordEvent);
-
-        let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent | GraphRunTranscriptEvent;
-        for await (event of runner.events(graphRun.workflowId)) { await sendEvent(event); }
-        const [updated] = await updateGraphRun({ id: graphRun.id, status: 'done' });
-        if (!updated) { throw new Error('Failed to update graph run'); }
-        await sendEvent({ type: 'run', payload: updated } as GraphRunRecordEvent);
-      } else {
+      if (!graphRun) {
         await sendEvent({ type: 'run', payload: null } as GraphRunRecordEvent);
+      } else {
+        const { statuses, transcripts, outputs } = graphRun;
+        if (['done', 'error'].includes(graphRun.status) && statuses && transcripts && outputs) {
+          // If the graph run is done and data is available, send it in one event instead of streaming many events
+          await sendEvent({ type: 'run', payload: graphRun } as GraphRunRecordEvent);
+          } else {
+          // Stream events for the graph run
+          await sendEvent({ type: 'run', payload: {...graphRun, ...graphRunMask} } as GraphRunRecordEvent);
+          
+          const transcripts: Array<[NodeId, GraphNodeMessage[]]> = [];
+          const outputs: Record<NodeId, any> = {};
+          let statuses: NodeStatuses = {};
+
+          let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent | GraphRunTranscriptEvent;
+          for await (event of runner.events(graphRun.workflowId)) {
+            await sendEvent(event);
+            if (event.type === 'transcript') {
+              transcripts.push(...event.payload);
+            } else if (event.type === 'output') {
+              outputs[event.payload[0]] = event.payload[1];
+            } else if (event.type === 'status') {
+              statuses = event.payload;
+            }
+          }
+          const status = Object.values(statuses).every(s => s === 'done') ? 'done' : Object.values(statuses).some(s => s === 'error') ? 'error' : 'running';
+          
+          // Persist the graph run data so that it can be retrieved without using the workflow client
+          const [updated] = await updateGraphRun({ id: graphRun.id, patch: { status, outputs, transcripts, statuses } });
+          if (!updated) { throw new Error('Failed to update graph run'); }
+
+          await sendEvent({ type: 'run', payload: { ...updated, graph: undefined, ...graphRunMask } } as GraphRunRecordEvent);
+        }
       }
     } catch (error) {
       console.error('Error streaming events:', error);
@@ -88,7 +116,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     workflowId: workflowId,
     graphId: graph.id,
     ownerId: session.user.id,
-    data: graph.data as GraphJSON,
+    graph: graph.data as GraphJSON,
   });
   return NextResponse.json(graphRun, { status: 200 });
 }

@@ -22,7 +22,10 @@ export const graphRun = pgTable('graph_run', {
   ownerId: uuid('owner_id').references(() => user.id),
   workflowId: varchar('workflow_id', { length: 128 }).notNull(),
   status: varchar('status', { length: 16 }).notNull().default('running'),
-  data: jsonb('data').notNull(), // { nodes: [...], edges: [...] }
+  graph: jsonb('graph').notNull(), // { nodes: [...], edges: [...] }
+  outputs: jsonb('outputs'),
+  statuses: jsonb('statuses'),
+  transcripts: jsonb('transcripts'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

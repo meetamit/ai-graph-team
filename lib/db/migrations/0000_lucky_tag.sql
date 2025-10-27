@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS "graph_run" (
 	"owner_id" uuid,
 	"workflow_id" varchar(128) NOT NULL,
 	"status" varchar(16) DEFAULT 'running' NOT NULL,
-	"data" jsonb NOT NULL,
+	"graph" jsonb NOT NULL,
+	"outputs" jsonb,
+	"statuses" jsonb,
+	"transcripts" jsonb,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );

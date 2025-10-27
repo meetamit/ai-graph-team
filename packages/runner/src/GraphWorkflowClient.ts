@@ -114,10 +114,10 @@ export class GraphWorkflowClient {
     let lastNeeded: NeededInput[] = [];
     let lastTranscripts: Array<[NodeId, Transcript]> = [];
     while (true && Date.now() - t0 < 10 * 60e3 /* 10 minutes timeout */) {
-      const status: NodeStatuses = await handle.query('getNodeStatuses') as NodeStatuses;
-      const changed: Array<[NodeId, NodeStatus]> = Object.entries(status).filter(([nodeId, status]) => status !== lastStatus[nodeId])
+      const statuses: NodeStatuses = await handle.query('getNodeStatuses') as NodeStatuses;
+      const changed: Array<[NodeId, NodeStatus]> = Object.entries(statuses).filter(([nodeId, status]) => status !== lastStatus[nodeId])
       if (changed.length) {
-        yield { type: 'status', payload: status };
+        yield { type: 'status', payload: statuses };
       }
       for (let [nodeId, status] of changed) {
         if (status === 'done' || status === 'error') {
@@ -126,8 +126,8 @@ export class GraphWorkflowClient {
       }
       
       if (
-        Object.values(status).some(s => s === 'awaiting') ||
-        Object.values(lastStatus).some(s => s === 'awaiting')
+        Object.entries(statuses).some(([nodeId, status]) => status === 'awaiting' && lastStatus[nodeId] !== status) ||
+        Object.entries(lastStatus).some(([nodeId, status]) => status === 'awaiting' && statuses[nodeId] !== status)
       ) {
         const neededInput: NeededInput[] = await handle.query('getNeededInput');
         if (lastNeeded.length !== neededInput?.length || lastNeeded.some((n, i) => n.nodeId !== neededInput?.[i]?.nodeId)) {
@@ -137,7 +137,7 @@ export class GraphWorkflowClient {
       }
       
       if (
-        Object.entries(status).some(([nodeId, status]) => status === 'running' || lastStatus[nodeId] !== status)
+        Object.entries(statuses).some(([nodeId, status]) => status === 'running' || lastStatus[nodeId] !== status)
       ) {
         const newTranscripts: Array<[NodeId, Transcript]> = await handle.query('getTranscripts', lastTranscripts.length);
         if (newTranscripts.length) {
@@ -146,10 +146,10 @@ export class GraphWorkflowClient {
         }
       }
 
-      lastStatus = status;
+      lastStatus = statuses;
 
       if (
-        Object.values(status).every(s => s === 'done') || 
+        Object.values(statuses).every(s => s === 'done') || 
         Object.values(lastStatus).includes('error')
       ) { break; }
 

@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { genSaltSync, hashSync } from 'bcrypt-ts';
-import { GraphJSON } from '@/lib/graphSchema';
+import { GraphJSON, GraphNodeMessage, NodeId, NodeStatuses } from '@/lib/graphSchema';
 import { and, asc, desc, eq, gt, gte, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -101,9 +101,9 @@ export async function deleteGraph({ id, ownerId }: { id: string, ownerId: string
   }
 }
 
-export async function createGraphRun({ graphId, ownerId, data, workflowId }: { graphId: string, ownerId: string, data: GraphJSON, workflowId: string }): Promise<GraphRun[]> {
+export async function createGraphRun({ graphId, ownerId, graph, workflowId }: { graphId: string, ownerId: string, graph: GraphJSON, workflowId: string }): Promise<GraphRun[]> {
   try {
-    return await db.insert(graphRun).values({ graphId, ownerId, data, workflowId }).returning();
+    return await db.insert(graphRun).values({ graphId, ownerId, graph, workflowId }).returning();
   } catch (error) {
     console.error('Failed to create graph run in database');
     throw error;
@@ -130,9 +130,18 @@ export async function getLatestGraphRun({ id }: { id: string }): Promise<GraphRu
   }
 }
 
-export async function updateGraphRun({ id, status }: { id: string, status: string }): Promise<GraphRun[]> {
+export async function updateGraphRun(
+  { id, patch }: { 
+    id: string, 
+    patch: { 
+      status: string,
+      outputs?: Record<NodeId, any>,
+      transcripts?: Array<[NodeId, GraphNodeMessage[]]>,
+      statuses?: NodeStatuses,
+    } 
+  }): Promise<GraphRun[]> {
   try {
-    return await db.update(graphRun).set({ status }).where(eq(graphRun.id, id)).returning();
+    return await db.update(graphRun).set(patch).where(eq(graphRun.id, id)).returning();
   } catch (error) {
     console.error('Failed to update graph run in database');
     throw error;
