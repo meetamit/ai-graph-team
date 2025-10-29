@@ -1,6 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import { Graph } from '@/lib/db/schema';
-import { GraphJSON, NodeId, NodeStatus, NodeStatuses } from '@/lib/graphSchema';
+import { GraphJSON, NodeId, NodeStatus, NodeStatuses } from '@/lib/graph-schema';
 
 export class GraphPage {
   constructor(private page: Page) {}

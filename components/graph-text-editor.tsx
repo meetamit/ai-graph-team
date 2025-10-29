@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { json } from "@codemirror/lang-json";
-import { GraphSchema, GraphJSON } from "@/lib/graphSchema";
+import { GraphSchema, GraphJSON } from "@/lib/graph-schema";
 import { z } from "zod";
 
 // Use dynamic import so SSR doesn't choke on window

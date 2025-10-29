@@ -1,5 +1,5 @@
 import { log } from '@temporalio/activity';
-import { Node } from '../types';
+import { Node, Transcript } from '../types';
 import simpleLanguageModel from '../models/simple';
 import { zodFromSchema } from '../json-schema-to-zod';
 import {
@@ -9,8 +9,6 @@ import {
 import { z } from 'zod';
 
 export type Activities = ReturnType<typeof createActivities>;
-
-export type Transcript = Array<ModelMessage>;
 
 export type NodeStepInput = {
   node: Node,
@@ -72,6 +70,7 @@ export function createActivities(deps: Dependencies = {}) {
         messages: input.transcript,
         stopWhen: stepCountIs(1), // Only allow one step, no followup calls
         tools: runTools,
+        toolChoice: 'required',
       });
 
       // Check for errors in the generateText output, which could arise from mal-formed tool calls

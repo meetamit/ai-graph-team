@@ -1,7 +1,7 @@
 import { GraphPage } from './pages/graph';
 import { test, expect } from '@playwright/test';
 import { format } from 'date-fns';
-import { PRESCRIPTIVE_GRAPH } from '@/lib/graphSchema';
+import { PRESCRIPTIVE_GRAPH } from '@/lib/templates/prescriptive';
 
 test.describe('graph activity', () => {
   let graphPage: GraphPage;

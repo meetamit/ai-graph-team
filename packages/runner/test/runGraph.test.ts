@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
-import { makeHarness, TestHarness, NeededInput,ProvidedInput } from './helpers/testEnv';
 import { MockLanguageModelV3, } from 'ai/test';
+import { TextPart } from 'ai';
+import { makeHarness, TestHarness, NeededInput,ProvidedInput } from './helpers/testEnv';
 import sinon from 'sinon';
 import { createActivities, NodeStepInput, NodeStepResult, ToolCallInput } from '../src/activities/createActivities';
 import withUserInput from '../src/models/withUserInput';
@@ -29,7 +30,7 @@ describe('Graph workflow', () => {
       })),
     });
 
-    const result = await h.runner.runWorkflow(require('./fixtures/graphs/debatePanel.json'));
+    const result = await h.runner.runWorkflow({ graph: require('./fixtures/graphs/debatePanel.json') });
     
     expect(result.outputs).toStrictEqual({
       user_input:       { type: "text", text: "Output from test node 'user_input'" },
@@ -61,7 +62,12 @@ describe('Graph workflow', () => {
       activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
     });
 
-    const result = await h.runner.runWorkflow(require('./fixtures/graphs/debatePanel.json'), 'Test prompt');
+    const result = await h.runner.runWorkflow({ 
+      graph: require('./fixtures/graphs/debatePanel.json'), 
+      prompt: 'Test prompt' 
+    });
+
+    expect(result.transcripts).toHaveLength(14);
 
     expect(result.outputs).toStrictEqual({
       user_input: {
@@ -153,4 +159,99 @@ describe('Graph workflow', () => {
       { prompt: 'Enter word_limits' },
     ]);
   }, 20000);
+
+  it('should fail gracefully and run from a node', async () => {
+    let simulateFailure: boolean;
+    let failBeforeSiblingIsDone: boolean;
+    let epoch: number = 0;
+    const impl: MockLanguageModelV3 = withUserInput({ delay: () => failBeforeSiblingIsDone ? 100 : 0 /* 300 makes position_against fail before position_for finishes */ }) as MockLanguageModelV3;
+    h = await makeHarness({
+      taskQueue,
+      workflowsPath: require.resolve('../src/workflows'),
+      activities: createActivities(({
+        model: new MockLanguageModelV3({ 
+          doGenerate: async (args) => {
+            if (simulateFailure && (args.prompt[1].content[1] as TextPart).text.includes('position_against')) {
+              await new Promise(resolve => setTimeout(resolve, 50));// Wait a bit so that "position_for" can finish
+              throw new Error('Simulated failure')
+            }
+
+            // Generate the default result
+            const result = await impl.doGenerate(args);
+
+            // Augment the node's message with the epoch number to make its uniqueness trackable
+            const content0 = result.content[0];
+            if (content0.type === 'tool-call' && content0.toolName === 'resolveNodeOutput') {
+              content0.input = content0.input.replace(/"message"\:"([^"]*)",/g, `"message":"${epoch}) $1",`);
+            }
+            return result;
+          }
+        })
+      })),
+    });
+
+    const data = expect.objectContaining({});// reusable generic data object
+    const graph = require('./fixtures/graphs/debatePanel.json');
+    
+    
+    simulateFailure = true; // Make it fail
+    failBeforeSiblingIsDone = false; // Make it wait for "position_for" to finish before failing
+    epoch++;
+    const partialResult = await h.runner.runWorkflow({ graph });
+    expect(partialResult.outputs).toStrictEqual({
+      user_input:       { message: "1) Collected and structured user inputs", data },
+      position_for:     { message: "1) Fulfilled the node 'position_for'", data },
+      position_against: { error: "Simulated failure" },
+    });
+    expect(partialResult.transcripts).toHaveLength(6);
+    
+
+    simulateFailure = false; // This time we won't fail!
+    epoch++;
+    const result = await h.runner.runWorkflow({
+      graph,
+      fromNode: 'position_against',
+      initial: partialResult,
+    });
+    expect(result.outputs).toStrictEqual({
+      // use_input and position_for should not have rerunm hence have the same message as the first run
+      user_input:       { message: "1) Collected and structured user inputs", data },
+      position_for:     { message: "1) Fulfilled the node 'position_for'", data },
+      position_against: { message: "2) Fulfilled the node 'position_against'", data },
+      judge_synthesis:  { message: "2) Fulfilled the node 'judge_synthesis'", data },
+      red_team:         { message: "2) Fulfilled the node 'red_team'", data },
+      finalize:         { message: "2) Fulfilled the node 'finalize'", data },
+    });
+    expect(result.transcripts).toHaveLength(14);
+
+
+    // PART 2
+    simulateFailure = true; // Make it fail
+    failBeforeSiblingIsDone = true; // Make it wait for "position_for" to finish before failing
+    epoch++;
+    const partialResult2 = await h.runner.runWorkflow({ graph });
+    expect(partialResult2.outputs).toStrictEqual({
+      // position_for should not have finished, hence be missing
+      user_input:       { message: "3) Collected and structured user inputs", data },
+      position_against: { error: "Simulated failure" },
+    });
+    expect(partialResult2.transcripts).toHaveLength(4);
+    
+    
+    simulateFailure = false; // This time we won't fail!
+    epoch++;
+    const result2 = await h.runner.runWorkflow({ graph, fromNode: 'position_against', initial: partialResult2 });
+    expect(result2.outputs).toStrictEqual({
+      // For the run to succeed, "position_for" will have to be auto-run when the run starts from "position_against"
+      user_input:       { message: "3) Collected and structured user inputs", data },
+      position_for:     { message: "4) Fulfilled the node 'position_for'", data },
+      position_against: { message: "4) Fulfilled the node 'position_against'", data },
+      judge_synthesis:  { message: "4) Fulfilled the node 'judge_synthesis'", data },
+      red_team:         { message: "4) Fulfilled the node 'red_team'", data },
+      finalize:         { message: "4) Fulfilled the node 'finalize'", data },
+    });
+    expect(result2.transcripts).toHaveLength(14);
+
+  }, 20000);
+
 });

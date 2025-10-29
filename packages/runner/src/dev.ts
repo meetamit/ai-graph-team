@@ -37,10 +37,10 @@ async function runClient() {
       collectInput: collectInputViaTerminal 
     });
     
-    return await runner.runWorkflow(
+    return await runner.runWorkflow({
       graph, 
-      `Should we write a workflow engine that runs DAGs of heavily LLM-backed nodes that process inputs, perform tasks using tools, and forward or route outputs downstream?`
-    );
+      prompt: `Should we write a workflow engine that runs DAGs of heavily LLM-backed nodes that process inputs, perform tasks using tools, and forward or route outputs downstream?`
+    });
   } catch (error) {
     console.error('Error running workflow:', error);
   } finally {

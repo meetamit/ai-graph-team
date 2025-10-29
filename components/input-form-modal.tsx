@@ -1,7 +1,7 @@
 "use client";
 
 import GraphInputForm from "./graph-input-form";
-import type { NeededInput, ProvidedInput } from "@/lib/graphSchema";
+import type { NeededInput, ProvidedInput } from "@/lib/graph-schema";
 
 interface InputFormModalProps {
   onClose: () => void;

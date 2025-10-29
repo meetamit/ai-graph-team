@@ -5,7 +5,7 @@ import { auth } from "@/app/(auth)/auth";
 import { graph, Graph } from "@/lib/db/schema";
 import { getGraphById, updateGraph, deleteGraph } from "@/lib/db/queries";
 import { eq } from "drizzle-orm";
-import { GraphSchema } from "@/lib/graphSchema";
+import { GraphSchema } from "@/lib/graph-schema";
 
 const UpdateSchema = z.object({
   title: z.string().min(1).optional(),

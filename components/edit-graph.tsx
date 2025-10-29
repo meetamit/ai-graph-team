@@ -1,17 +1,16 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { Graph } from "@/lib/db/schema";
-import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graphSchema";
+import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graph-schema";
+import { useGraph } from "@/hooks/use-graph";
 import GraphTextEditor from "./graph-text-editor";
 import GraphFlowEditor from "./graph-flow-editor";
 import NodeSidebar from "./node-sidebar";
 import InputFormModal from "./input-form-modal";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { useGraph } from "@/hooks/use-graph";
 import { EditIcon } from "./icons";
-import { useCallback } from "react";
 
 export default function EditGraph({ graph }: { graph: Graph }) {
   // Ensure the graph data has the proper structure with layouts
@@ -106,7 +105,7 @@ export default function EditGraph({ graph }: { graph: Graph }) {
 
           {!creating && (
             <Button
-              onClick={runGraph}
+              onClick={() => runGraph()}
               size="sm"
             >
               Run
@@ -153,6 +152,9 @@ export default function EditGraph({ graph }: { graph: Graph }) {
           messageGroups={selectedNodeMessages}
           selectedNode={selectedNode}
           onNodeChange={handleNodeChange}
+          runGraph={creating ? undefined : runGraph}
+          graphData={data}
+          nodeStatuses={nodeStatuses}
         />}
 
         {isInputFormOpen && <InputFormModal

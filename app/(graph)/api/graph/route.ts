@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/(auth)/auth";
 import { getGraphsByUserId, saveGraph } from "@/lib/db/queries";
 import { Graph } from "@/lib/db/schema";
-import { GraphSchema } from "@/lib/graphSchema";
+import { GraphSchema } from "@/lib/graph-schema";
 import { z } from "zod";
 
 const CreateSchema = z.object({

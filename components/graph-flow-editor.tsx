@@ -8,7 +8,7 @@ import '@xyflow/react/dist/style.css';
 import './react-flow-overrides.css'
 
 import BasicNode from "./graph-basic-node";
-import { GraphJSON } from "@/lib/graphSchema";
+import { GraphJSON } from "@/lib/graph-schema";
 
 type Props = {
   initialValue: GraphJSON;

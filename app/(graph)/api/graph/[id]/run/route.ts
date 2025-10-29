@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/app/(auth)/auth";
 import { getGraphById, createGraphRun, getLatestGraphRun, getGraphRunById, updateGraphRun } from "@/lib/db/queries";
+import { GraphRun } from '@/lib/db/schema'
 import {
   GraphWorkflowClient, 
   Graph, NodeType, NodeId,
@@ -12,7 +13,7 @@ import {
 import {
   GraphJSON, GraphNodeMessage,
   GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent
-} from "@/lib/graphSchema";
+} from "@/lib/graph-schema";
 
 const runner: GraphWorkflowClient = new GraphWorkflowClient({
   taskQueue: 'graph-queue',
@@ -101,6 +102,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
 
   const { id } = await params;
+  const body = await request.json().catch(() => ({}));
+  const { fromNode, fromRun: fromRunId } = body as { fromNode?: string, fromRun?: string };
+
+  let fromRun: GraphRun | null = null;
+  if (fromNode) {
+    if (!fromRunId) {
+      throw new Error('Must provide runId to run from a node');
+    }
+    fromRun = await getGraphRunById({ id: fromRunId });
+    if (!fromRun) {
+      throw new Error('Invalid runId');
+    }
+  }
+  
   const graph = await getGraphById({ id });
   if (!graph) {
     return new NextResponse('Graph not found', { status: 404 });
@@ -111,7 +126,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
 
   const workflowId = `team-run-${graph.id}-${Date.now()}`;
-  runner.runWorkflow(graph.data as Graph, undefined, workflowId)
+  runner.runWorkflow({ 
+    graph: graph.data as Graph, 
+    workflowId: workflowId,
+    fromNode,
+    initial: fromRun ? {
+      status: fromRun.statuses as any/*  as NodeStatuses */,
+      outputs: fromRun.outputs as any/*  as Record<NodeId, any> */,
+      transcripts: fromRun.transcripts as any/*  as Array<[NodeId, GraphNodeMessage[]]> */,
+    } : undefined
+  })
   const [graphRun] = await createGraphRun({
     workflowId: workflowId,
     graphId: graph.id,

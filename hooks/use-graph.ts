@@ -5,7 +5,7 @@ import type {
   GraphJSON, NeededInput, ProvidedInput, NodeId,
   GraphRunEvent, GraphRunStatusEvent, GraphRunNeededInputEvent,GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunErrorEvent, GraphRunTranscriptEvent,
   NodeStatuses, GraphNodeMessage,
-} from "@/lib/graphSchema";
+} from "@/lib/graph-schema";
 import { toast } from "@/components/toast";
 
 type GraphRunPayloadByType<T extends GraphRunEvent['type']> = Extract<GraphRunEvent, { type: T }>['payload'];
@@ -91,13 +91,14 @@ export function useGraph(graph: Graph) {
       const res = await fetch(`/api/graph/${graph.id}/run`, { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromNode }),
+        body: JSON.stringify({ fromNode, fromRun: run?.id }),
       });
       if (!res.ok) {
         const errorMessage = await res.text();
         toast({ type: 'error', description: errorMessage || `Failed to run graph (${res.status})` });
         throw new Error(errorMessage);
       }
+      setTranscripts([]);
       setRun(await res.json());
       updateRun();
     } catch (e: any) {

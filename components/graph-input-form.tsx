@@ -1,6 +1,6 @@
 "use client";
 
-import { NeededInput, ProvidedInput } from "@/lib/graphSchema";
+import { NeededInput, ProvidedInput } from "@/lib/graph-schema";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
