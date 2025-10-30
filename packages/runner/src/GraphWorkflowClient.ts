@@ -3,7 +3,7 @@ import { NativeConnection } from '@temporalio/worker';
 import { runGraphWorkflow, receiveInput } from './workflows';
 import type { NeededInput, ProvidedInput, Graph, NodeStatuses, NodeStatus, NodeId, Transcript } from './types';
 
-export type { NeededInput, ProvidedInput };
+export type { NeededInput, ProvidedInput, Graph };
 
 type WorkflowEventType = 'status' |'result' | 'output' | 'needInput';
 type WorkflowEvent = { type: WorkflowEventType; payload: any };

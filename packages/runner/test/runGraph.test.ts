@@ -1,10 +1,14 @@
+import { fileURLToPath } from 'url';
 import { describe, it, expect } from '@jest/globals';
 import { MockLanguageModelV3, } from 'ai/test';
 import { TextPart } from 'ai';
-import { makeHarness, TestHarness, NeededInput,ProvidedInput } from './helpers/testEnv';
+import { makeHarness, TestHarness, NeededInput, ProvidedInput, Graph } from './helpers/testEnv';
 import sinon from 'sinon';
 import { createActivities, NodeStepInput, NodeStepResult, ToolCallInput } from '../src/activities/createActivities';
 import withUserInput from '../src/models/withUserInput';
+import debatePanel from './fixtures/graphs/debatePanel.json' with { type: 'json' };
+
+const workflowsPath = fileURLToPath(new URL('../src/workflows', import.meta.url));
 
 describe('Graph workflow', () => {
   const taskQueue = 'test-graph-queue';
@@ -18,7 +22,7 @@ describe('Graph workflow', () => {
   it('should run a simple graph workflow', async () => {
     h = await makeHarness({
       taskQueue,
-      workflowsPath: require.resolve('../src/workflows'),
+      workflowsPath,
       activities: createActivities(({
         async nodeStepImpl(input: NodeStepInput): Promise<NodeStepResult> {
           const text = `Output from test node '${input.node.id}'`;
@@ -30,7 +34,7 @@ describe('Graph workflow', () => {
       })),
     });
 
-    const result = await h.runner.runWorkflow({ graph: require('./fixtures/graphs/debatePanel.json') });
+    const result = await h.runner.runWorkflow({ graph: debatePanel as Graph });
     
     expect(result.outputs).toStrictEqual({
       user_input:       { type: "text", text: "Output from test node 'user_input'" },
@@ -44,9 +48,6 @@ describe('Graph workflow', () => {
 
 
   it('collects user input and resolves node output via tool calls', async () => {
-    let uniqueId = 0;
-    let step = -1;
-
     // Create a sinon spy for collectInput that returns the expected inputs
     const collectInput = sinon.spy(async (neededInput: NeededInput[]): Promise<ProvidedInput[]> => {
       return neededInput.map(needed => ({
@@ -58,12 +59,12 @@ describe('Graph workflow', () => {
     
     h = await makeHarness({
       taskQueue, collectInput,
-      workflowsPath: require.resolve('../src/workflows'),
+      workflowsPath,
       activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
     });
 
     const result = await h.runner.runWorkflow({ 
-      graph: require('./fixtures/graphs/debatePanel.json'), 
+      graph: debatePanel as Graph, 
       prompt: 'Test prompt' 
     });
 
@@ -167,7 +168,7 @@ describe('Graph workflow', () => {
     const impl: MockLanguageModelV3 = withUserInput({ delay: () => failBeforeSiblingIsDone ? 100 : 0 /* 300 makes position_against fail before position_for finishes */ }) as MockLanguageModelV3;
     h = await makeHarness({
       taskQueue,
-      workflowsPath: require.resolve('../src/workflows'),
+      workflowsPath,
       activities: createActivities(({
         model: new MockLanguageModelV3({ 
           doGenerate: async (args) => {
@@ -191,7 +192,7 @@ describe('Graph workflow', () => {
     });
 
     const data = expect.objectContaining({});// reusable generic data object
-    const graph = require('./fixtures/graphs/debatePanel.json');
+    const graph = debatePanel as Graph;
     
     
     simulateFailure = true; // Make it fail
