@@ -1,12 +1,12 @@
 import { MockLanguageModelV3 } from 'ai/test';
-import { LanguageModel, TextPart } from 'ai';
-import { Node as NodeType } from '../types';
+import { LanguageModel, ModelMessage, TextPart } from 'ai';
+import { Node } from '../types';
 import { fixtureFromSchema } from './utils';
 
 export default function deterministicLanguageModel({
   delay = () => 100 + Math.random() * 500
 }: {
-  delay?: number | ((nodeId: string) => number)
+  delay?: number | ((nodeId: string | undefined) => number)
 } = {} ): LanguageModel {
   return new MockLanguageModelV3({
     doGenerate: async (args): Promise<any> => {
@@ -17,8 +17,7 @@ export default function deterministicLanguageModel({
         return acc;
       }, {} as Record<string, any>);
 
-      // Extract node params from the prompt message where it was injected by the workflow engine
-      const { id: nodeId, type: nodeType, output_schema } = JSON.parse((prompt[1].content[1] as TextPart).text as string) as NodeType;
+      const { id: nodeId, type: nodeType, output_schema } = extractNodeData(prompt) || {};
 
       await new Promise(resolve => setTimeout(resolve, typeof delay === 'function' ? delay(nodeId) : delay));
       
@@ -94,3 +93,27 @@ export default function deterministicLanguageModel({
     },
   })
 };
+
+// Extract node params from the prompt message where it was injected by the workflow engine
+function extractNodeData(prompt: ModelMessage[]): Node | undefined {
+  for (const message of prompt) {
+    if (message.role === 'user') {
+      const content: TextPart[] = typeof message.content === 'string' 
+        ? [{ type: 'text', text: message.content as string }] 
+        : message.content.filter(c => c.type === 'text');
+      const nodeContent = content.find(c => {
+        if (c.type === 'text') {
+          try {
+            const parsed = JSON.parse(c.text);
+            return parsed.id && parsed.type && true;
+          } catch (error) { /* Not a valid JSON string, so not the node JSON */ }
+        }
+        return false;
+      }) as TextPart;
+
+      if (nodeContent) {
+        return JSON.parse(nodeContent.text) as Node;
+      }
+    }
+  }
+}

@@ -2,6 +2,7 @@ import { log } from '@temporalio/activity';
 import { Node, Transcript } from '../types';
 import simpleLanguageModel from '../models/simple';
 import { zodFromSchema } from '../json-schema-to-zod';
+import { evaluateTemplate } from '../cel';
 import {
   generateText, stepCountIs, LanguageModel, tool,
   ModelMessage, TextPart, ToolCallPart, ToolResultPart, Tool, 
@@ -108,28 +109,44 @@ export function createActivities(deps: Dependencies = {}) {
     throw new Error(`Unimplemented tool call "${input.toolCall.toolName}"`);
   }
 
+  const systemRules = 'You are a node in a DAG-based workflow. You must return a single JSON object. If required inputs are missing, request them using the available tools.';
+  const genericInstructions = [
+    systemRules,
+    '## Node JSON',
+    '{{node}}',
+    '## Upstream Inputs JSON',
+    '{{inputs}}',
+    '{{prompt != null ? "## User Prompt (exctract inputs from this if possible/needed)" : ""}}',
+    '{{prompt != null ? prompt : ""}}',
+  ];
+
   async function takeNodeFirstStep(input: NodeStepInput): Promise<NodeStepResult> {
-    const systemRules = 'You are a node in a DAG-based workflow. You must return a single JSON object. If required inputs are missing, request them using the available tools.';
-    
-    // Keep rules in system:
-    const messages: ModelMessage[] = [
-      { role: 'system', content: systemRules },
-    
-      // Put data in the user turn, as separate parts for readability/streaming:
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: '## Node JSON' },
-          { type: 'text', text: JSON.stringify(input.node) },
-    
-          { type: 'text', text: '## Upstream Inputs JSON' },
-          { type: 'text', text: JSON.stringify(input.inputs) },
-    
-          input.prompt && { type: 'text', text: '## User Prompt (exctract inputs from this if possible/needed)' },
-          input.prompt && { type: 'text', text: typeof input.prompt === 'string' ? input.prompt : JSON.stringify(input.prompt) },
-        ].filter(Boolean),
-      },
-    ];
+    const instructions = input.node.instructions || genericInstructions;
+    const templateContext = { ...input, prompt: input.prompt || null,  };
+    const messages: ModelMessage[] = instructions
+      .reduce(
+        (acc: ModelMessage[], instruction: string, i) => {
+          const evaluated = evaluateTemplate(instruction, templateContext);
+          if (i === 0) {
+            acc.push({ role: 'system', content: evaluated });
+          } else if (i === 1) {
+            acc[1] = { role: 'user', content: [{ type: 'text', text: evaluated }] };
+          } else {
+            (acc[1].content as TextPart[]).push({ type: 'text', text: evaluated });
+          }
+          return acc;
+        },
+        [] as ModelMessage[]
+      )
+      .filter(message => message.content.length > 0)
+      .map(m => ({
+        ...m,
+        content: m.role === 'system' 
+          ? m.content as string
+          : (m.content as TextPart[]).filter(c => c.type !== 'text' || c.text.trim() !== '')
+        }
+      ) as ModelMessage);
+
 
     // Prepend the prompt to the input transcript
     input.transcript.splice(0, 0, ...messages);

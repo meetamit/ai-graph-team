@@ -63,10 +63,7 @@ describe('Graph workflow', () => {
       activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
     });
 
-    const result = await h.runner.runWorkflow({ 
-      graph: debatePanel as Graph, 
-      prompt: 'Test prompt' 
-    });
+    const result = await h.runner.runWorkflow({ graph: debatePanel as Graph });
 
     expect(result.transcripts).toHaveLength(14);
 

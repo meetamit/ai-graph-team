@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.1.0-beta.7",
+    "@marcbachmann/cel-js": "^3.0.1",
     "@temporalio/activity": "^1.13.0",
     "@temporalio/client": "^1.13.0",
     "@temporalio/common": "^1.13.0",
