@@ -76,7 +76,8 @@ describe('CEL Template', () => {
 
   describe('prompt generation', () => {
     const workflowsPath = fileURLToPath(new URL('../src/workflows', import.meta.url));
-    const taskQueue = 'test-graph-queue';
+    const taskQueue = 'test-cel-queue';
+    const idBase = 'test-cel-';
     let h: TestHarness;
     afterEach(async () => {
       if (!h) return;
@@ -85,8 +86,7 @@ describe('CEL Template', () => {
   
     it('generates prompts from instructions containing CEL expressions', async () => {
       h = await makeHarness({
-        taskQueue,
-        workflowsPath,
+        taskQueue, workflowsPath, idBase,
         activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
       });
 
@@ -106,8 +106,7 @@ describe('CEL Template', () => {
 
     it ('generates prompts from default instructions and containing top-level prompt — when supplied', async () => {
       h = await makeHarness({
-        taskQueue,
-        workflowsPath,
+        taskQueue, workflowsPath, idBase,
         activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
       });
 
@@ -132,8 +131,7 @@ describe('CEL Template', () => {
 
     it ('generates prompts from default instructions and handles missing top-level prompt', async () => {
       h = await makeHarness({
-        taskQueue,
-        workflowsPath,
+        taskQueue, workflowsPath, idBase,
         activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
       });
 

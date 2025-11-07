@@ -2,8 +2,8 @@ import { fileURLToPath } from 'url';
 import { describe, it, expect } from '@jest/globals';
 import { MockLanguageModelV3, } from 'ai/test';
 import { TextPart } from 'ai';
-import { makeHarness, TestHarness, NeededInput, ProvidedInput, Graph } from './helpers/testEnv';
 import sinon from 'sinon';
+import { makeHarness, TestHarness, NeededInput, ProvidedInput, Graph } from './helpers/testEnv';
 import { createActivities, NodeStepInput, NodeStepResult, ToolCallInput } from '../src/activities/createActivities';
 import withUserInput from '../src/models/withUserInput';
 import debatePanel from './fixtures/graphs/debatePanel.json' with { type: 'json' };
@@ -12,6 +12,8 @@ const workflowsPath = fileURLToPath(new URL('../src/workflows', import.meta.url)
 
 describe('Graph workflow', () => {
   const taskQueue = 'test-graph-queue';
+  const idBase = 'test-run-graph-';
+
   let h: TestHarness;
   afterEach(async () => {
     if (!h) return;
@@ -21,8 +23,7 @@ describe('Graph workflow', () => {
 
   it('should run a simple graph workflow', async () => {
     h = await makeHarness({
-      taskQueue,
-      workflowsPath,
+      taskQueue, workflowsPath, idBase,
       activities: createActivities(({
         async nodeStepImpl(input: NodeStepInput): Promise<NodeStepResult> {
           const text = `Output from test node '${input.node.id}'`;
@@ -58,8 +59,7 @@ describe('Graph workflow', () => {
     });
     
     h = await makeHarness({
-      taskQueue, collectInput,
-      workflowsPath,
+      taskQueue, workflowsPath, idBase, collectInput,
       activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
     });
 
@@ -164,8 +164,7 @@ describe('Graph workflow', () => {
     let epoch: number = 0;
     const impl: MockLanguageModelV3 = withUserInput({ delay: () => failBeforeSiblingIsDone ? 100 : 0 /* 300 makes position_against fail before position_for finishes */ }) as MockLanguageModelV3;
     h = await makeHarness({
-      taskQueue,
-      workflowsPath,
+      taskQueue, workflowsPath, idBase,
       activities: createActivities(({
         model: new MockLanguageModelV3({ 
           doGenerate: async (args) => {
@@ -174,8 +173,7 @@ describe('Graph workflow', () => {
               throw new Error('Simulated failure')
             }
 
-            // Generate the default result
-            const result = await impl.doGenerate(args);
+            const result = await impl.doGenerate(args); // Generate the default result
 
             // Augment the node's message with the epoch number to make its uniqueness trackable
             const content0 = result.content[0];

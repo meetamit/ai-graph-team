@@ -5,7 +5,7 @@
     "isolatedModules": true,
     "moduleResolution": "nodenext",
     "resolveJsonModule": true,
-    "lib": ["ES2020"],
+    "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,

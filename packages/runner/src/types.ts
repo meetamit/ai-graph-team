@@ -28,12 +28,6 @@ export type RunState = {
   error?: any;
 };
 
-export type RunNodeInput = {
-  node: Node;
-  inputs: Record<string, any>;
-  context: RunState;
-};
-
 export type NeededInput = {
   name: string;
   prompt: string;

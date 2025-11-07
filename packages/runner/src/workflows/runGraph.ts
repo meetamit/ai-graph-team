@@ -1,12 +1,16 @@
-import { proxyActivities, log, defineSignal, defineQuery, setHandler } from '@temporalio/workflow';
-import { NodeId, Node, Graph, RunState, RunNodeInput, NeededInput, ProvidedInput, NodeStatuses, Transcript } from '../types';
+import { proxyActivities, log, defineSignal, defineQuery, setHandler, workflowInfo } from '@temporalio/workflow';
+import { 
+  RunState, NeededInput, ProvidedInput, NodeStatuses,
+  Transcript,
+  NodeId, Node, Graph, 
+} from '../types';
 import { Activities, NodeStepResult } from '../activities/createActivities';
 import { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai';
 import { zodFromSchema } from '../json-schema-to-zod';
 
 
 const { makeToolCall, takeNodeFirstStep, takeNodeFollowupStep } = proxyActivities<Activities>({
-  startToCloseTimeout: '1 minute',
+  startToCloseTimeout: '10 minutes',
   retry: { maximumAttempts: 1 },
 });
 
@@ -71,26 +75,23 @@ function initRunState(graph: Graph, prompt?: any, fromNode?: NodeId, pre?: RunSt
     const siblingNodes = new Set<NodeId>(graph.nodes.map(n => n.id).filter(id => !upstreamNodes.has(id) && !downstreamNodes.has(id)));
 
     // Check that all upstream nodes are done and have valid outputs
-    for (const upstreamNodeId of upstreamNodes) {
-      if (pre.status[upstreamNodeId] !== 'done') {
-        throw new InvalidInputError(`Cannot start from node ${fromNode}: upstream node ${upstreamNodeId} is not done (status: ${pre.status[upstreamNodeId]})`);
+    for (const uId of upstreamNodes) {
+      if (pre.status[uId] !== 'done') {
+        throw new InvalidInputError(`Cannot start from node ${fromNode}: upstream node ${uId} is not done (status: ${pre.status[uId]})`);
       }
-      if (!pre.outputs[upstreamNodeId]) {
-        throw new InvalidInputError(`Cannot start from node ${fromNode}: upstream node ${upstreamNodeId} has no output`);
+      if (!pre.outputs[uId]) {
+        throw new InvalidInputError(`Cannot start from node ${fromNode}: upstream node ${uId} has no output`);
       }
     }
     
     // 3. Initialize state by copying upstream data from pre state
-    // Set status and copy outputs for upstream nodes
-    for (const upstreamNodeId of upstreamNodes) {
-      status[upstreamNodeId] = pre.status[upstreamNodeId];
-      outputs[upstreamNodeId] = pre.outputs[upstreamNodeId];
-    }
-    // Set status and copy outputs for sibling nodes that are done
-    for (const siblingNodeId of siblingNodes) {
-      if (pre.status[siblingNodeId] === 'done') {
-        status[siblingNodeId] = pre.status[siblingNodeId];
-        outputs[siblingNodeId] = pre.outputs[siblingNodeId];
+
+    // Set status and copy outputs for upstream and (done) sibling nodes
+    for (const id of [...upstreamNodes, ...siblingNodes]) {
+      // only copy if the node is done, which only matters for siblings
+      if (pre.status[id] === 'done') {
+        status[id] = pre.status[id];
+        outputs[id] = pre.outputs[id];
       }
     }
     
@@ -156,6 +157,7 @@ export async function runGraphWorkflow({
 
   const nodeById = Object.fromEntries(graph.nodes.map(n => [n.id, n]));
 
+  const { runId } = workflowInfo();
   let state: RunState;
   try {
     state = initRunState(graph, prompt, fromNode, initial);
@@ -171,6 +173,12 @@ export async function runGraphWorkflow({
     return state;
   }
 
+  type RunNodeInput = {
+    node: Node;
+    inputs: Record<string, any>;
+    state: RunState;
+  };
+    
   async function runNodeWorkflow(input: RunNodeInput): Promise<any> {
     const MAX_STEPS = 10;
     let transcript: Transcript = [];
@@ -178,14 +186,13 @@ export async function runGraphWorkflow({
     let resultObject: any;
     for (let i = 0; i < MAX_STEPS && !resultObject; i++) {
       stepResult = await (i === 0 ? takeNodeFirstStep : takeNodeFollowupStep)({
-        transcript, i, 
-        prompt: input.context.prompt, 
+        transcript, i,
+        prompt: input.state.prompt, 
         node: input.node, 
         inputs: input.inputs
       });
 
       // Append the generated messages to the transcript
-      // transcript.splice(transcript.length, 0, ...(stepResult.messages.map(({ role, content }) => ({ role, content })) as ModelMessage[]));
       transcript.splice(transcript.length, 0, ...stepResult.messages);
       state.transcripts.push([input.node.id, stepResult.messages]);
 
@@ -199,10 +206,7 @@ export async function runGraphWorkflow({
           .filter(c => c.type === 'tool-call')
           .map(({ type, toolCallId, toolName, input }) => ({ type, toolCallId, toolName, input }));
         
-        if (toolCalls.length === 0) {
-          throw new Error('No tool calls found');
-        }
-
+        // If there are tool calls that were not auto-resolved, call them
         const toolCallResults: ToolResultPart[] = await Promise.all(
           toolCalls.map(async (toolCall: ToolCallPart) => {
             let toolResult: ToolResultPart;
@@ -257,9 +261,12 @@ export async function runGraphWorkflow({
             return toolResult;
           })
         )
-        const toolMessage: ModelMessage = { role: 'tool', content: toolCallResults }
-        transcript.push(toolMessage);
-        state.transcripts.push([input.node.id, [toolMessage] as Transcript]);
+
+        if (toolCallResults.length > 0) {
+          const toolMessage: ModelMessage = { role: 'tool', content: toolCallResults }
+          transcript.push(toolMessage);
+          state.transcripts.push([input.node.id, [toolMessage] as Transcript]);
+        }
       } else {
         throw new Error(`Unexpected finish reason: ${stepResult.finishReason}`);
       }
@@ -277,7 +284,7 @@ export async function runGraphWorkflow({
       const inputs: Record<NodeId, any> = Object.fromEntries(
         graph.edges.filter(e => e.to === id).map(e => [e.from, state.outputs[e.from]]) as [NodeId, any][]
       );
-      runNodeWorkflow({ node, inputs, context: state })
+      runNodeWorkflow({ node, inputs, state })
         .then((output: RunState) => {
           if (!output) { return reject(new Error('No output from node')); }
           state.status[id] = 'done';

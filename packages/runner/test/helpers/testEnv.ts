@@ -18,6 +18,7 @@ export async function makeHarness(opts: {
   workflowsPath: string;
   activities: Record<string, any>;
   taskQueue: string;
+  idBase?: string;
   collectInput?: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
 }): Promise<TestHarness> {
   const env = await TestWorkflowEnvironment.createTimeSkipping();
@@ -50,7 +51,7 @@ export async function makeHarness(opts: {
     connection,
     collectInput: opts.collectInput || defaultCollectInput,
     taskQueue: opts.taskQueue,
-    idBase: 'test-run-graph-',
+    idBase: opts.idBase || 'test-run-',
   });
   
   // Start the worker in the background for the duration of the test file

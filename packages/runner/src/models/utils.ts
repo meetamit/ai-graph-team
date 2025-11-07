@@ -1,3 +1,33 @@
+import { ModelMessage, TextPart } from 'ai';
+import { Node } from '../types';
+
+export function extractNodeData(prompt: ModelMessage[]): Node | undefined {
+  return extractMessageData(prompt, (data) => data.id && data.type && true);
+}
+
+export function extractMessageData(prompt: ModelMessage[], test: (data: any) => boolean): any {
+  for (const message of prompt) {
+    if (message.role === 'user' || message.role === 'system') {
+      const content: TextPart[] = typeof message.content === 'string' 
+        ? [{ type: 'text', text: message.content as string }] 
+        : message.content.filter(c => c.type === 'text');
+      const match = content.find(c => {
+        if (c.type === 'text') {
+          try {
+            const parsed = JSON.parse(c.text);
+            return test(parsed);
+          } catch (error) { /* Not a valid JSON string, so not the node JSON */ }
+        }
+        return false;
+      }) as TextPart;
+
+      if (match) {
+        return JSON.parse(match.text);
+      }
+    }
+  }
+}
+
 // Fixture generator for the same simplified Schema type used before.
 type Schema =
   | {
@@ -54,6 +84,8 @@ type FixtureOptions = {
   startIndex?: number;          // default 1
   /** If true, exclude optional properties (keeps output minimal). */
   omitOptionalProps?: boolean;  // default false (include optionals)
+  /** Data to be used to generate the fixture values (instead of "string N"). */
+  data?: any;
 };
 
 export function fixtureFromSchema(schema: Schema, options: FixtureOptions = {}): any {
@@ -61,6 +93,7 @@ export function fixtureFromSchema(schema: Schema, options: FixtureOptions = {}):
     arrayLength: options.arrayLength ?? 4,
     sIndex: options.startIndex ?? 1,
     omitOptional: !!options.omitOptionalProps,
+    data: options.data ?? {},
   };
   return buildValue(schema, ctx, []);
 }
@@ -69,6 +102,7 @@ type Ctx = {
   arrayLength: number;
   sIndex: number;         // global counter for "string N"
   omitOptional: boolean;
+  data: any;
 };
 
 function buildValue(schema: Schema, ctx: Ctx, path: string[]): any {
@@ -106,7 +140,7 @@ function buildValue(schema: Schema, ctx: Ctx, path: string[]): any {
 
   switch (t) {
     case "string":
-      return genString(schema as any, ctx);
+      return genString(schema as any, ctx, path);
 
     case "number":
     case "integer":
@@ -170,7 +204,19 @@ function genString(s: {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
-}, ctx: Ctx): string {
+}, ctx: Ctx, path: string[]): string {
+  // If data is provided, use it to generate the string value.
+  if (ctx.data && path.length > 0) {
+    const _path = path.concat();
+    let value: string | undefined;
+    while (_path.length > 0) {
+      const key = _path.shift();
+      if (key) { value = ctx.data[key]; }
+      if (value === undefined) break;
+    }
+    if (value !== undefined) return value;
+  }
+
   // Attempt to satisfy simple patterns first
   if (s.pattern) {
     const p = s.pattern;

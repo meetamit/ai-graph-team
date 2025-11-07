@@ -1,7 +1,6 @@
 import { MockLanguageModelV3 } from 'ai/test';
-import { LanguageModel, ModelMessage, TextPart } from 'ai';
-import { Node } from '../types';
-import { fixtureFromSchema } from './utils';
+import { LanguageModel } from 'ai';
+import { fixtureFromSchema, extractNodeData } from './utils';
 
 export default function deterministicLanguageModel({
   delay = () => 100 + Math.random() * 500
@@ -62,6 +61,9 @@ export default function deterministicLanguageModel({
         }
       } else if (nodeId && nodeType === 'llm') {
         if (toolsById['resolveNodeOutput']) {
+          // Extract tool results from the prompt. If they exist, use them to resolve the node output.
+          const toolResults = (prompt.find(m => m.role === 'tool')?.content.find(c => c.type === 'tool-result')?.output as any)?.value;
+
           // Resolve via tool call, if available. Use output schema, if provided, to generate the resolved output.
           return {
             usage: {},
@@ -74,8 +76,8 @@ export default function deterministicLanguageModel({
                 input: JSON.stringify({
                   message: `Fulfilled the node '${nodeId}'`,
                   data: output_schema
-                    ? fixtureFromSchema(output_schema)
-                    : { x: 100, y: 200, z: 300 }
+                    ? fixtureFromSchema(output_schema, { data: toolResults })
+                    : toolResults || { x: 100, y: 200, z: 300 }
                 }) 
               },
             ],
@@ -93,27 +95,3 @@ export default function deterministicLanguageModel({
     },
   })
 };
-
-// Extract node params from the prompt message where it was injected by the workflow engine
-function extractNodeData(prompt: ModelMessage[]): Node | undefined {
-  for (const message of prompt) {
-    if (message.role === 'user') {
-      const content: TextPart[] = typeof message.content === 'string' 
-        ? [{ type: 'text', text: message.content as string }] 
-        : message.content.filter(c => c.type === 'text');
-      const nodeContent = content.find(c => {
-        if (c.type === 'text') {
-          try {
-            const parsed = JSON.parse(c.text);
-            return parsed.id && parsed.type && true;
-          } catch (error) { /* Not a valid JSON string, so not the node JSON */ }
-        }
-        return false;
-      }) as TextPart;
-
-      if (nodeContent) {
-        return JSON.parse(nodeContent.text) as Node;
-      }
-    }
-  }
-}

@@ -91,24 +91,6 @@ export function createActivities(deps: Dependencies = {}) {
     }
   }
 
-  async function makeToolCall(input: ToolCallInput): Promise<ToolResultPart> {
-    if (deps.toolCallImpl) { return await deps.toolCallImpl(input); }
-    const toolDef: Tool = tools[input.toolCall.toolName];
-    if (toolDef) {
-      const value = toolDef.execute ? await (toolDef.execute as any)(input.toolCall.input) : {};
-      return {
-        type: 'tool-result',
-        toolName: input.toolCall.toolName,
-        toolCallId: input.toolCall.toolCallId,
-        output: {
-          type: 'json',
-          value,
-        } as any,
-      };
-    }
-    throw new Error(`Unimplemented tool call "${input.toolCall.toolName}"`);
-  }
-
   const systemRules = 'You are a node in a DAG-based workflow. You must return a single JSON object. If required inputs are missing, request them using the available tools.';
   const genericInstructions = [
     systemRules,
@@ -155,6 +137,28 @@ export function createActivities(deps: Dependencies = {}) {
     // Prepend the prompt to the result messages
     result.messages.splice(0,0, ...messages);
     return result;
+  }
+
+  async function makeToolCall(input: ToolCallInput): Promise<ToolResultPart> {
+    if (deps.toolCallImpl) { return await deps.toolCallImpl(input); }
+    const toolName = input.toolCall.toolName;
+    const toolDef: Tool = tools[toolName];
+    let value: any;
+    if (toolDef && toolDef.execute) {
+      value = await (toolDef.execute as any)(input.toolCall.input);
+    }
+    if (!value) {
+      throw new Error(`Unimplemented tool call "${input.toolCall.toolName}"`);
+    }
+    return {
+      type: 'tool-result',
+      toolName: input.toolCall.toolName,
+      toolCallId: input.toolCall.toolCallId,
+      output: {
+        type: 'json',
+        value,
+      } as any,
+    };
   }
 
   return {
