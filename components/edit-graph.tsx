@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { Graph } from "@/lib/db/schema";
 import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graph-schema";
+import { GRAPH_TEMPLATES } from "@/lib/templates";
 import { useGraph } from "@/hooks/use-graph";
 import GraphTextEditor from "./graph-text-editor";
 import GraphFlowEditor from "./graph-flow-editor";
@@ -71,6 +72,19 @@ export default function EditGraph({ graph }: { graph: Graph }) {
     }
   }, [neededInput.length]);
 
+  const handleTemplateSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const templateId = e.target.value;
+    if (!templateId) return;
+    
+    const template = GRAPH_TEMPLATES.find(t => t.id === templateId);
+    if (template) {
+      setData(template.data);
+      !creating && saveGraphDebounced(template.data);
+    }
+    // Reset the select to placeholder
+    e.target.value = "";
+  }, [setData, saveGraphDebounced, creating]);
+
   return (
     <div className="h-screen flex flex-col">
       <div className="flex items-center justify-between p-2 border-b border-gray-200 bg-white">
@@ -81,6 +95,18 @@ export default function EditGraph({ graph }: { graph: Graph }) {
             onChange={handleTitleChange}
             className="w-64"
           />
+          <select
+            onChange={handleTemplateSelect}
+            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 cursor-pointer"
+            defaultValue=""
+          >
+            <option value="" disabled>Load Template...</option>
+            {GRAPH_TEMPLATES.map(template => (
+              <option key={template.id} value={template.id}>
+                {template.name}
+              </option>
+            ))}
+          </select>
         </div>
         
         <div className="flex items-center gap-2">

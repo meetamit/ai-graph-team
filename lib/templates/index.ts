@@ -1,6 +1,7 @@
 import type { GraphJSON } from '../graph-schema';
 import { STARTER_GRAPH } from './starter';
 import { PRESCRIPTIVE_GRAPH } from './prescriptive';
+import { IMAGER_GRAPH } from './imager';
 
 export interface GraphTemplate {
   id: string;
@@ -21,6 +22,12 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
     name: 'Debate Panel (Prescriptive)',
     description: 'A structured debate panel with defined output schemas and instructions',
     data: PRESCRIPTIVE_GRAPH,
+  },
+  {
+    id: 'imager',
+    name: 'Imager',
+    description: 'A graph that generates an image based on the user\'s input.',
+    data: IMAGER_GRAPH,
   },
 ];
 
