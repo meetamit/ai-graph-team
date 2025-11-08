@@ -38,7 +38,7 @@ export default function deterministicLanguageModel({
               input: JSON.stringify({ name: key, prompt: value.description || `Enter ${key}`, default: value.default }) 
             })),
           };
-        } else if (prompt.length === 4 && toolsById['resolveNodeOutput']) {
+        } else if (prompt.length === 4 && toolsById['resolveOutput']) {
           // Followup request after user input collection; returns tool call to resolve node output
           const toolResults = Object.fromEntries(
             // Extract input-collection tool results from the prompt and use them to resolve the node output
@@ -48,7 +48,7 @@ export default function deterministicLanguageModel({
             usage: {},
             finishReason: 'tool-calls',
             content: [
-              { type: 'tool-call', toolCallId: `call_by_${nodeId}_3`, toolName: 'resolveNodeOutput', input: JSON.stringify({ message: 'Collected and structured user inputs', data: toolResults }) },
+              { type: 'tool-call', toolCallId: `call_by_${nodeId}_3`, toolName: 'resolveOutput', input: JSON.stringify({ message: 'Collected and structured user inputs', data: toolResults }) },
             ],
           };
         } else {
@@ -60,7 +60,7 @@ export default function deterministicLanguageModel({
           }
         }
       } else if (nodeId && nodeType === 'llm') {
-        if (toolsById['resolveNodeOutput']) {
+        if (toolsById['resolveOutput']) {
           // Extract tool results from the prompt. If they exist, use them to resolve the node output.
           const toolResults = (prompt.find(m => m.role === 'tool')?.content.find(c => c.type === 'tool-result')?.output as any)?.value;
 
@@ -72,7 +72,7 @@ export default function deterministicLanguageModel({
               {
                 type: 'tool-call', 
                 toolCallId: `call_by_${nodeId}_1`, 
-                toolName: 'resolveNodeOutput', 
+                toolName: 'resolveOutput', 
                 input: JSON.stringify({
                   message: `Fulfilled the node '${nodeId}'`,
                   data: output_schema

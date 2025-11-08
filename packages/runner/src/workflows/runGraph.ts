@@ -264,7 +264,7 @@ export async function runGraphWorkflow({
               }
               // Set the node status back to running after the input is collected
               state.status[input.node.id] = 'running';
-            } else if (toolCall.toolName === 'resolveNodeOutput') {
+            } else if (toolCall.toolName === 'resolveOutput') {
               if (input.node.output_schema) {
                 try {
                   const validator = zodFromSchema(input.node.output_schema);

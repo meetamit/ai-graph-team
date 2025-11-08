@@ -62,8 +62,8 @@ export function createActivities(deps: Dependencies = {}) {
     // Add node-specific tools to the available tools
     const runTools: Record<string, Tool> = {
       ...tools,
-      resolveNodeOutput: tool({
-        description: 'Resolve the final output of a node once its work is done',
+      resolveOutput: tool({
+        description: 'Resolve the final output once the work is done',
         inputSchema: z.object({
           message: z.string().describe('Human readable message sumarizing the work done by the node'),
           data: input.node.output_schema

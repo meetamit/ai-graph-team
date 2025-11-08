@@ -178,7 +178,7 @@ describe('Graph workflow', () => {
 
             // Augment the node's message with the epoch number to make its uniqueness trackable
             const content0 = result.content[0];
-            if (content0.type === 'tool-call' && content0.toolName === 'resolveNodeOutput') {
+            if (content0.type === 'tool-call' && content0.toolName === 'resolveOutput') {
               content0.input = content0.input.replace(/"message"\:"([^"]*)",/g, `"message":"${epoch}) $1",`);
             }
             return result;
