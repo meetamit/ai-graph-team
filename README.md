@@ -4,7 +4,7 @@ A DAG editor with Temporal workflow execution, built with Next.js.
 
 ## Features
 
-- **Visual DAG Editor**: Create and edit directed acyclic graphs of instructions
+- **Visual DAG Editor**: Create and edit directed acyclic graphs of prompt instructions and tools
 - **Temporal Integration**: Execute workflows reliably with Temporal's orchestration engine
 - **Real-time Monitoring**: Monitor execution progress, view logs, and track artifacts
 
@@ -12,6 +12,7 @@ A DAG editor with Temporal workflow execution, built with Next.js.
 
 - **Frontend**: Next.js 15 (App Router), React 18, TypeScript
 - **Styling**: Tailwind CSS
+- **UI**: React Flow, Radix UI
 - **Database**: PostgreSQL with Drizzle ORM
 - **Workflow Engine**: Temporal
 - **File Storage**: Vercel Blob or S3-compatible storage
@@ -34,7 +35,7 @@ A DAG editor with Temporal workflow execution, built with Next.js.
    npm install
    ```
 
-2. **Set up environment variables**:
+2. **Set up environment variables <u>in two places</u>>**:
    ```bash
    cp .env.example .env.local
    ```
@@ -43,18 +44,64 @@ A DAG editor with Temporal workflow execution, built with Next.js.
    - `POSTGRES_URL`: PostgreSQL connection string
    - `AUTH_SECRET`: Random secret for NextAuth
 
+   ```bash
+   cp packages/runner/.env.example packages/runner/.env
+   ```
+   
+   Fill in the required environment variables:
+   - `OPENAI_API_KEY`: API key for making LLM calls with OpenAI
+
 3. **Set up the database**:
    ```bash
-   npm run db:generate
-   npm run db:migrate
+   npm run db:migrate # Only needs to be run upon first setup or when the database schema changes
    ```
 
-4. **Start the development server**:
+   Postgres cheatsheet commands you may need to run:
+
+   ```PostgreSQL
+   # Create a new database
+   CREATE DATABASE my_new_database;
+
+   # Create a new user
+   CREATE USER my_new_user WITH PASSWORD 'secure_password';
+
+   # Grant permissions to a user on a database
+   GRANT ALL PRIVILEGES ON DATABASE my_new_database TO my_new_user;
+   # Grant permissions to a user on all databases
+   GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO my_new_user;
+   # Grant permissions to a user on all sequences
+   GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO my_new_user;
+
+   # Grant superuser privileges to a user
+   ALTER USER my_new_user WITH SUPERUSER; # CAUTION: Only do this for development purposes.
+   ```
+   
+4. **Start the Temporal worker**:
+   ```bash
+   npm run worker
+   ```
+   
+   This will start the Temporal worker that runs nodes in the graph as workflows and activities.
+
+   If you installed Temporal using Docker, you can start it with:
+   ```bash
+   docker compose up
+   ```
+
+5. **Start the development server**:
    ```bash
    npm run dev
    ```
+   
+   This will start the development server that runs the Next.js application and integrates with the Temporal worker.
 
-5. **Open your browser**:
+6. **Run the tests**:
+   ```bash
+   npx playwright install # Only needs to be run once
+   npm run test
+   ```
+
+7. **Open your browser**:
    Navigate to [http://localhost:3000](http://localhost:3000)
 
 ### Database Setup
@@ -68,6 +115,7 @@ The application uses PostgreSQL with Drizzle ORM.
 - `npm run dev`: Start development server
 - `npm run build`: Build for production
 - `npm run start`: Start production server
+- `npm run worker`: Start Temporal worker
 - `npm run db:generate`: Generate database migrations
 - `npm run db:migrate`: Run database migrations
 - `npm run db:push`: Push schema changes to database
@@ -79,54 +127,4 @@ The application uses PostgreSQL with Drizzle ORM.
 2. **API Routes**: Add new routes in `app/api/`
 3. **Components**: Create reusable components in `components/`
 4. **Hooks**: Add SWR hooks in `hooks/` for client-side data fetching
-5. **Validations**: Add Zod schemas in `lib/validations/`
-
-### React Compiler Demo
-
-The application includes several React Compiler demonstrations:
-
-1. **Activity Component**: Shows loading states with automatic optimization
-2. **View Transitions**: Smooth page transitions (see `app/(marketing)/page.tsx` → `app/(app)/page.tsx`)
-3. **Automatic Memoization**: All components benefit from React Compiler optimizations
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
-
-### Other Platforms
-
-The application can be deployed to any platform that supports Next.js:
-
-- Railway
-- Render
-- AWS Amplify
-- Netlify (with serverless functions)
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Support
-
-For questions and support:
-
-- Create an issue in the GitHub repository
-- Check the documentation
-- Review the example implementations
-
----
-
-**Note**: This is a development version. The Temporal client is currently a dummy implementation. To enable real workflow execution, implement the `TemporalClient` interface as described in the setup instructions.
 
