@@ -8,11 +8,12 @@ import {
   GraphWorkflowClient, 
   Graph, NodeType, NodeId,
   NeededInput, ProvidedInput,
-  NodeStatuses, 
+  NodeStatuses, FileRef,
 } from '@ai-graph-team/runner';
 import {
   GraphJSON, GraphNodeMessage,
-  GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent
+  GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, 
+  GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent, GraphRunFilesEvent
 } from "@/lib/graph-schema";
 
 const runner: GraphWorkflowClient = new GraphWorkflowClient({
@@ -61,9 +62,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           
           const transcripts: Array<[NodeId, GraphNodeMessage[]]> = [];
           const outputs: Record<NodeId, any> = {};
+          let files: Record<string, FileRef> = {};
           let statuses: NodeStatuses = {};
 
-          let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent | GraphRunTranscriptEvent;
+          let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent | GraphRunTranscriptEvent | GraphRunFilesEvent;
           for await (event of runner.events(graphRun.workflowId)) {
             await sendEvent(event);
             if (event.type === 'transcript') {
@@ -72,12 +74,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
               outputs[event.payload[0]] = event.payload[1];
             } else if (event.type === 'status') {
               statuses = event.payload;
+            } else if (event.type === 'files') {
+              files = event.payload;
             }
           }
           const status = Object.values(statuses).every(s => s === 'done') ? 'done' : Object.values(statuses).some(s => s === 'error') ? 'error' : 'running';
           
           // Persist the graph run data so that it can be retrieved without using the workflow client
-          const [updated] = await updateGraphRun({ id: graphRun.id, patch: { status, outputs, transcripts, statuses } });
+          const [updated] = await updateGraphRun({ id: graphRun.id, patch: { status, outputs, transcripts, statuses, files } });
           if (!updated) { throw new Error('Failed to update graph run'); }
 
           await sendEvent({ type: 'run', payload: { ...updated, graph: undefined, ...graphRunMask } } as GraphRunRecordEvent);
@@ -126,17 +130,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
 
   const workflowId = `team-run-${graph.id}-${Date.now()}`;
-  runner.runWorkflow({ 
+  const { description: { runId } } = await runner.startWorkflow({ 
     graph: graph.data as Graph, 
     workflowId: workflowId,
     fromNode,
     initial: fromRun ? {
+      runId: fromRun.runId,
       status: fromRun.statuses as any/*  as NodeStatuses */,
       outputs: fromRun.outputs as any/*  as Record<NodeId, any> */,
       transcripts: fromRun.transcripts as any/*  as Array<[NodeId, GraphNodeMessage[]]> */,
+      files: fromRun.files as any/*  as Record<string, FileRef> */,
     } : undefined
   })
   const [graphRun] = await createGraphRun({
+    runId,
     workflowId: workflowId,
     graphId: graph.id,
     ownerId: session.user.id,

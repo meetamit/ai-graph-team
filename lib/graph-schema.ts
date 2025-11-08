@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type {
-  NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, 
-  GraphStatusEvent, GraphNodeOutputEvent, GraphNeededInputEvent, GraphTranscriptEvent,
+  NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, FileRef,
+  GraphStatusEvent, GraphNodeOutputEvent, GraphNeededInputEvent, GraphTranscriptEvent, GraphFilesEvent,
   ModelMessage, AssistantModelMessage, UserModelMessage, SystemModelMessage, ToolModelMessage,
   ToolCallPart, ToolResultPart, TextPart,
 } from '@ai-graph-team/runner';
@@ -33,17 +33,19 @@ export const GraphSchema = z.object({
 
 export type GraphJSON = z.infer<typeof GraphSchema>;
 
-export type { NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput };
+export type { NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, FileRef };
 
 export type GraphRunStatusEvent = GraphStatusEvent;
 export type GraphRunNodeOutputEvent = GraphNodeOutputEvent;
 export type GraphRunNeededInputEvent = GraphNeededInputEvent;
 export type GraphRunTranscriptEvent = GraphTranscriptEvent;
+export type GraphRunFilesEvent = GraphFilesEvent;
 export type GraphRunRecordEvent = { type: 'run'; payload: GraphRun | null };
 export type GraphRunDoneEvent = { type: 'done'; payload: {} };
 export type GraphRunErrorEvent = { type: 'error'; payload: { error: string } };
 
-export type GraphRunEvent = GraphRunRecordEvent | GraphRunStatusEvent | GraphRunNeededInputEvent | GraphRunNodeOutputEvent | GraphRunTranscriptEvent | GraphRunDoneEvent | GraphRunErrorEvent;
+export type GraphRunEvent = GraphRunRecordEvent | GraphRunStatusEvent | GraphRunNeededInputEvent | GraphRunNodeOutputEvent | 
+                            GraphRunTranscriptEvent | GraphRunDoneEvent | GraphRunErrorEvent | GraphRunFilesEvent;
 export type GraphRunEventType = GraphRunEvent['type'];
 
 export type GraphNodeMessage = ModelMessage;

@@ -78,6 +78,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "graph_id": {
           "name": "graph_id",
           "type": "uuid",
@@ -117,6 +123,12 @@
         },
         "statuses": {
           "name": "statuses",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "files": {
+          "name": "files",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false

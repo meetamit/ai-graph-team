@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS "graph" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "graph_run" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"run_id" uuid NOT NULL,
 	"graph_id" uuid,
 	"owner_id" uuid,
 	"workflow_id" varchar(128) NOT NULL,
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS "graph_run" (
 	"graph" jsonb NOT NULL,
 	"outputs" jsonb,
 	"statuses" jsonb,
+	"files" jsonb,
 	"transcripts" jsonb,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL

@@ -3,6 +3,10 @@ import type { GraphJSON } from '../graph-schema';
 const fileSchema = {
   type: "object",
   properties: {
+    id: {
+      type: "string",
+      description: "The id of the file"
+    },
     uri: {
       type: "string",
       description: "The URI of the file"

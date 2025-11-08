@@ -30,6 +30,7 @@ describe('Graph workflow', () => {
           return {
             messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
             finishReason: 'stop',
+            files: [],
           }
         }
       })),

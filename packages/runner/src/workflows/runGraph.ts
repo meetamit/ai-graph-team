@@ -1,7 +1,7 @@
 import { proxyActivities, log, defineSignal, defineQuery, setHandler, workflowInfo } from '@temporalio/workflow';
 import { 
   RunState, NeededInput, ProvidedInput, NodeStatuses,
-  Transcript,
+  Transcript, FileRef,
   NodeId, Node, Graph, 
 } from '../types';
 import { Activities, NodeStepResult } from '../activities/createActivities';
@@ -24,10 +24,11 @@ export class InvalidInputError extends Error {
   }
 }
 
-function initRunState(graph: Graph, prompt?: any, fromNode?: NodeId, pre?: RunState): RunState {
+function initRunState(runId: string, graph: Graph, prompt?: any, fromNode?: NodeId, pre?: RunState): RunState {
   const status: RunState['status'] = {};
   const pendingIn: RunState['pendingIn'] = {};
   const outputs: RunState['outputs'] = {};
+  const files: RunState['files'] = {};
   const transcripts: Array<[NodeId, Transcript]> = [];
   let ready: NodeId[];
   
@@ -86,12 +87,23 @@ function initRunState(graph: Graph, prompt?: any, fromNode?: NodeId, pre?: RunSt
     
     // 3. Initialize state by copying upstream data from pre state
 
+    // We will copy fileRefs for nodes that are upstream or siblings.
+    type FileRefsByNode = Record<NodeId, Record<string, FileRef>>;
+    const filesByNode: FileRefsByNode = Object.values(pre.files).reduce((m, file) => {
+      if (file.nodeId) {
+        m[file.nodeId] = m[file.nodeId] || {};
+        m[file.nodeId][file.id] = file;
+      }
+      return m;
+    }, {} as FileRefsByNode);
+
     // Set status and copy outputs for upstream and (done) sibling nodes
     for (const id of [...upstreamNodes, ...siblingNodes]) {
       // only copy if the node is done, which only matters for siblings
       if (pre.status[id] === 'done') {
         status[id] = pre.status[id];
         outputs[id] = pre.outputs[id];
+        Object.assign(files, filesByNode[id] || {})
       }
     }
     
@@ -120,7 +132,7 @@ function initRunState(graph: Graph, prompt?: any, fromNode?: NodeId, pre?: RunSt
     ready = graph.nodes.filter(n => pendingIn[n.id] === 0).map(n => n.id).sort(); // sort for determinism
   }
   
-  return { prompt, status, pendingIn, ready, outputs, transcripts };
+  return { runId, prompt, status, pendingIn, ready, outputs, transcripts, files };
 }
 
 export const receiveInput = defineSignal<[ProvidedInput[]]>('receiveInput');
@@ -128,6 +140,7 @@ export const getNeededInput = defineQuery<NeededInput[]>('getNeededInput');
 export const getNodeStatuses = defineQuery<NodeStatuses>('getNodeStatuses');
 export const getNodeOutput = defineQuery<Record<string, any>, [NodeId]>('getNodeOutput');
 export const getTranscripts = defineQuery<Array<[NodeId, Transcript]>, [number]>('getTranscripts');
+export const getFiles = defineQuery<Record<string, FileRef>>('getFiles');
 
 export async function runGraphWorkflow({
   graph, prompt, fromNode, initial
@@ -154,20 +167,23 @@ export async function runGraphWorkflow({
   setHandler(getNodeStatuses, () => state.status);
   setHandler(getNodeOutput, (nodeId: NodeId) => state.outputs[nodeId]);
   setHandler(getTranscripts, (offset: number) => state.transcripts.slice(offset || 0));
-
+  setHandler(getFiles, () => state.files);
+  
   const nodeById = Object.fromEntries(graph.nodes.map(n => [n.id, n]));
 
   const { runId } = workflowInfo();
   let state: RunState;
   try {
-    state = initRunState(graph, prompt, fromNode, initial);
+    state = initRunState(runId, graph, prompt, fromNode, initial);
   } catch (e: any) {
     state = {
+      runId,
       outputs: {},
       status: {},
       pendingIn: {},
       ready: [],
       transcripts: [],
+      files: {},
       error: e.message,
     }
     return state;
@@ -186,24 +202,38 @@ export async function runGraphWorkflow({
     let resultObject: any;
     for (let i = 0; i < MAX_STEPS && !resultObject; i++) {
       stepResult = await (i === 0 ? takeNodeFirstStep : takeNodeFollowupStep)({
-        transcript, i,
+        transcript, i, runId,
         prompt: input.state.prompt, 
         node: input.node, 
-        inputs: input.inputs
+        inputs: input.inputs,
+        files: input.state.files,
       });
 
       // Append the generated messages to the transcript
       transcript.splice(transcript.length, 0, ...stepResult.messages);
       state.transcripts.push([input.node.id, stepResult.messages]);
 
+      // Append any files created during the step to the state
+      for (let fileRef of stepResult.files) { state.files[fileRef.id] = fileRef }
+
+      // If the step is done, extract the result. This is unlikely to happen, because we're forcing the LLM to resolve via tools.
       if (stepResult.finishReason === 'stop') {
         const content = transcript[transcript.length - 1]?.content;
         resultObject = content.length === 1 ? content[0] : content;
         break;
-      } else if (stepResult.finishReason === 'tool-calls') {
+      }
+      // If the step is resolved via tool calls (ATM it's the only expect way to resolve), extract the results
+      else if (stepResult.finishReason === 'tool-calls') {
+        // Some tools (like createFile) are auto-called in the node step, so we need to discover them to determine which tool calls are actionable here.
+        const autoResults: ToolResultPart[] = stepResult.messages
+          .flatMap(m => (typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content).map(c => c as TextPart | ToolResultPart))
+          .filter(c => c.type === 'tool-result')
+          .map(({ type, toolCallId, toolName, output }) => ({ type, toolCallId, toolName, output: { type: 'json', value: output } } as ToolResultPart));
+
         const toolCalls: ToolCallPart[] = stepResult.messages
           .flatMap(m => (typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content).map(c => c as TextPart | ToolCallPart))
           .filter(c => c.type === 'tool-call')
+          .filter(c => !autoResults.some(r => r.toolCallId === c.toolCallId)) // exclude auto results
           .map(({ type, toolCallId, toolName, input }) => ({ type, toolCallId, toolName, input }));
         
         // If there are tool calls that were not auto-resolved, call them
@@ -256,7 +286,7 @@ export async function runGraphWorkflow({
                 },
               }
             } else {
-              toolResult = await makeToolCall({ toolCall });
+              toolResult = await makeToolCall({ runId: state.runId, toolCall, nodeId: input.node.id });
             }
             return toolResult;
           })

@@ -18,6 +18,7 @@ export const graph = pgTable('graph', {
 
 export const graphRun = pgTable('graph_run', {
   id: uuid('id').defaultRandom().primaryKey(),
+  runId: uuid('run_id').notNull(),
   graphId: uuid('graph_id').references(() => graph.id),
   ownerId: uuid('owner_id').references(() => user.id),
   workflowId: varchar('workflow_id', { length: 128 }).notNull(),
@@ -25,6 +26,7 @@ export const graphRun = pgTable('graph_run', {
   graph: jsonb('graph').notNull(), // { nodes: [...], edges: [...] }
   outputs: jsonb('outputs'),
   statuses: jsonb('statuses'),
+  files: jsonb('files'),
   transcripts: jsonb('transcripts'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

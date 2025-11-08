@@ -1,10 +1,11 @@
 import { log } from '@temporalio/activity';
-import { Node, Transcript } from '../types';
+import { Node, Transcript, FileRef } from '../types';
 import simpleLanguageModel from '../models/simple';
 import { zodFromSchema } from '../json-schema-to-zod';
 import { evaluateTemplate } from '../cel';
+import { writeTextFile, readTextFile } from '../files';
 import {
-  generateText, stepCountIs, LanguageModel, tool,
+  generateText, LanguageModel, tool,
   ModelMessage, TextPart, ToolCallPart, ToolResultPart, Tool, 
 } from 'ai';
 import { z } from 'zod';
@@ -12,11 +13,13 @@ import { z } from 'zod';
 export type Activities = ReturnType<typeof createActivities>;
 
 export type NodeStepInput = {
-  node: Node,
-  i: number,
-  transcript: Transcript,
-  prompt: any,
-  inputs: Record<string, any>,
+  runId: string;
+  node: Node;
+  i: number;
+  transcript: Transcript;
+  files: Record<string, FileRef>;
+  prompt: any;
+  inputs: Record<string, any>;
 }
 
 type GenerateTextResponse = Awaited<ReturnType<typeof generateText>>;
@@ -24,10 +27,13 @@ type GenerateTextResponse = Awaited<ReturnType<typeof generateText>>;
 export type NodeStepResult = {
   finishReason: GenerateTextResponse['finishReason'];
   messages: Transcript,
+  files: FileRef[],
 };
 
 export type ToolCallInput = {
-  toolCall: ToolCallPart,
+  runId: string;
+  toolCall: ToolCallPart;
+  nodeId?: string;
 }
 
 const tools: Record<string, Tool> = {
@@ -51,6 +57,8 @@ export function createActivities(deps: Dependencies = {}) {
   async function takeNodeStep(input: NodeStepInput): Promise<NodeStepResult> {    
     if (deps.nodeStepImpl) { return await deps.nodeStepImpl(input); }
 
+    const files: FileRef[] = []; // Keep track of files created during this step
+
     // Add node-specific tools to the available tools
     const runTools: Record<string, Tool> = {
       ...tools,
@@ -63,26 +71,72 @@ export function createActivities(deps: Dependencies = {}) {
             : z.any(),
         }),
       }),
+      createFile: tool({
+        description: 'Create a file',
+        inputSchema: z.object({
+          filename: z.string().describe('The user-facing name of the file'),
+          mediaType: z.string().optional().default('text/plain').describe('The media type of the file'),
+          content: z.string().describe('The content of the file'),
+        }),
+        execute: async ({ content, filename, mediaType }: z.infer<typeof tools.createFile.inputSchema>) => {
+          const fileRef = await writeTextFile(input.runId, input.node.id, content, filename, mediaType, 'node');
+          files.push(fileRef)
+          return fileRef;
+        },
+      }),
+      readFile: tool({
+        description: 'Read a file as text.',
+        inputSchema: z.object({
+          fileId: z.string().describe('The id of the file to read'),
+        }),
+        execute: async ({ fileId }: z.infer<typeof tools.readFile.inputSchema>) => {
+          const fileRef: FileRef = input.files[fileId];
+          // if (!fileRef) { throw new Error(`File not found: ${fileId}`); }
+          if (!fileRef) { return { error: `File not found: ${fileId}` }; }
+          const content = await readTextFile(fileRef);
+          return content;
+        },
+      }),    
     };
     
     try {
       const result = await generateText({
         model: deps.model || simpleLanguageModel(), 
         messages: input.transcript,
-        stopWhen: stepCountIs(1), // Only allow one step, no followup calls
         tools: runTools,
         toolChoice: 'required',
       });
 
       // Check for errors in the generateText output, which could arise from mal-formed tool calls
-      if (result.content.some((c:any) => c.error)) {
-        throw new Error(`Error in generateText output ${JSON.stringify(result.content, null, 2)}`);
+      const error: any = result.content.find((c:any) => c.error);
+      if (error) {
+        throw new Error(`Error in generateText output ${error.error}`);
       }
-
-      const content = result.content.map(c =>  typeof c === 'string' ? { type: 'text', text: c } as TextPart : c as ToolCallPart);
+      
+      // Convert the content to messages, including auto-resolved tool results
+      const content = result.content.map(c =>  typeof c === 'string' ? { type: 'text', text: c } as TextPart : c as ToolCallPart | ToolResultPart);
+      const messages: ModelMessage[] = content.reduce((messages, c) => {
+        const role: ModelMessage['role'] = c.type === 'tool-result' ? 'tool' : 'assistant';
+        const message = messages.find(m => m.role === role);
+        if (c.type === 'tool-result') {
+          c = {
+            ...c, 
+            output: {
+              type: 'json',
+              value: c.output,
+            },
+          }
+        }
+        if (message) {
+          (message.content as Array<TextPart | ToolCallPart | ToolResultPart>).push(c);
+        } else {
+          messages.push({ role, content: [c] } as ModelMessage);
+        }
+        return messages;
+      }, [] as ModelMessage[]);
       
       return {
-        messages: [{ role: 'assistant', content }],
+        messages, files,
         finishReason: result.finishReason,
       };
     } catch (error) {
@@ -126,8 +180,7 @@ export function createActivities(deps: Dependencies = {}) {
         content: m.role === 'system' 
           ? m.content as string
           : (m.content as TextPart[]).filter(c => c.type !== 'text' || c.text.trim() !== '')
-        }
-      ) as ModelMessage);
+      }) as ModelMessage);
 
 
     // Prepend the prompt to the input transcript

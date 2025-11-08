@@ -1,7 +1,7 @@
 import { Connection, Client, WorkflowHandle, WorkflowNotFoundError } from '@temporalio/client';
 import { NativeConnection } from '@temporalio/worker';
 import { runGraphWorkflow, receiveInput } from './workflows';
-import type { NeededInput, ProvidedInput, Graph, NodeStatuses, NodeStatus, NodeId, Transcript } from './types';
+import type { NeededInput, ProvidedInput, Graph, NodeStatuses, NodeStatus, NodeId, Transcript, FileRef } from './types';
 
 export type { NeededInput, ProvidedInput, Graph };
 
@@ -12,7 +12,7 @@ export type GraphNodeOutputEvent = { type: 'output'; payload: [NodeId, any] };
 export type GraphStatusEvent = { type: 'status'; payload: NodeStatuses };
 export type GraphNeededInputEvent = { type: 'needed'; payload: NeededInput[] };
 export type GraphTranscriptEvent = { type: 'transcript'; payload: Array<[NodeId, Transcript]>; };
-
+export type GraphFilesEvent = { type: 'files'; payload: Record<string, FileRef>; };
 
 
 export type GraphWorkflowRunOptions = {
@@ -21,9 +21,11 @@ export type GraphWorkflowRunOptions = {
   workflowId?: string;
   fromNode?: NodeId;
   initial?: {
+    runId: string;
     status: NodeStatuses;
     outputs: Record<NodeId, any>;
     transcripts: Array<[NodeId, Transcript]>;
+    files: Record<string, FileRef>;
   };
 };
 
@@ -59,7 +61,7 @@ export class GraphWorkflowClient {
     });
   }
 
-  async runWorkflow(options: GraphWorkflowRunOptions): Promise<any> {
+  async startWorkflow(options: GraphWorkflowRunOptions): Promise<{ description: { runId: string }; handle: WorkflowHandle }> {
     const { graph, prompt, workflowId, fromNode, initial } = options;
     const client = await this.getClient();
 
@@ -76,13 +78,18 @@ export class GraphWorkflowClient {
         }
       });
       this.runningWorkflows.add(handle);
+      console.log(`Started workflow ${handle.workflowId} ${(await handle.describe()).runId}`);
+      return { description: await handle.describe(), handle };
+    } catch (error) {
+      console.error('Error starting workflow:', error);
+      throw error;
+    }
+  }
 
-      console.log(`Started workflow ${handle.workflowId}`);
-
-      if (!this.collectInput) {
-        return handle.result();
-      }
-      
+  async runWorkflow(options: GraphWorkflowRunOptions): Promise<any> {
+    const { handle } = await this.startWorkflow(options);
+    if (!this.collectInput) { return handle.result(); }
+    try {
       // if we have a collectInput function, we need to poll until the workflow needs input
       const resultPromise = handle.result().then((r: any) => ({ type: 'result' as const, payload: r }));
 
@@ -120,7 +127,7 @@ export class GraphWorkflowClient {
     await handle.signal(receiveInput, inputs);
   }
 
-  async *events(workflowId: string): AsyncGenerator<GraphStatusEvent | GraphNeededInputEvent | GraphNodeOutputEvent | GraphTranscriptEvent> {
+  async *events(workflowId: string): AsyncGenerator<GraphStatusEvent | GraphNeededInputEvent | GraphNodeOutputEvent | GraphTranscriptEvent | GraphFilesEvent> {
     const client = await this.getClient();
     const handle: WorkflowHandle = await client.workflow.getHandle(workflowId);
     try {
@@ -173,7 +180,13 @@ export class GraphWorkflowClient {
       if (
         Object.values(statuses).every(s => s === 'done') || 
         Object.values(lastStatus).includes('error')
-      ) { break; }
+      ) {
+        const files: Record<string, FileRef> = await handle.query('getFiles');
+        if (Object.keys(files).length) {
+          yield { type: 'files', payload: files };
+        }
+        break;
+      }
 
       await new Promise(resolve => setTimeout(resolve, 500));
     }
