@@ -2,6 +2,7 @@ import { GraphPage } from './pages/graph';
 import { test, expect } from '@playwright/test';
 import { format } from 'date-fns';
 import { PRESCRIPTIVE_GRAPH } from '@/lib/templates/prescriptive';
+import { IMAGE_GRAPH } from '@/lib/templates/image-generator';
 
 test.describe('graph activity', () => {
   let graphPage: GraphPage;
@@ -31,6 +32,7 @@ test.describe('graph activity', () => {
   });
 
   test('create, run and reload a graph', async ({ page }) => {
+    graphPage.runWithTestModel('delayed');
     const testTitle = `Test Title 2 — ${format(new Date(), 'MM-dd-yyyy HH:mm:ss')}`;
     await graphPage.createNewGraph(testTitle);
     await graphPage.runGraph(testTitle);
@@ -50,11 +52,9 @@ test.describe('graph activity', () => {
       { name: 'user_input_2', prompt: 'Question 2', default: 'Default 2' },
     ]);
 
-    // Fill in the input values
+    // Fill in the input values and submit the form
     await graphPage.fillInputField('user_input_1', 'Test answer 1');
     await graphPage.fillInputField('user_input_2', 'Test answer 2');
-    
-    // Submit the form
     await graphPage.submitInputForm();
 
     await graphPage.expectNodeStatuses({
@@ -93,5 +93,32 @@ test.describe('graph activity', () => {
       position_against: 'done',
       judge: 'done',
     });
+  });
+
+  test('run a graph with image generation', async ({ page }) => {
+    graphPage.runWithTestModel('imageGen');
+
+    const testTitle = `Test Title 4 — ${format(new Date(), 'MM-dd-yyyy HH:mm:ss')}`;
+    await graphPage.createNewGraph(testTitle, IMAGE_GRAPH);
+
+    await graphPage.runGraph(testTitle);
+    await graphPage.expectNodeStatuses({
+      user_input: 'awaiting',
+      image_generator: 'pending',
+    });
+
+    // Fill in the input values and submit the form
+    await graphPage.fillInputField('prompt', 'Test prompt');
+    await graphPage.submitInputForm();
+
+    await graphPage.expectNodeStatuses({
+      user_input: 'done',
+      image_generator: 'done',
+    });
+
+    const imageLocator = page.getByAltText('test_image.png'); // Replace with your image selector
+    await expect(imageLocator).toBeVisible();
+    const boundingBox = await imageLocator.boundingBox();
+    expect(boundingBox?.height).toBeGreaterThan(50);
   });
 });

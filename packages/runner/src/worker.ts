@@ -2,7 +2,7 @@
 import { Worker, NativeConnection } from '@temporalio/worker';
 import { LanguageModel } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { simple, withUserInput } from '@ai-graph-team/runner/src/models';
+import { simple, withUserInput, withImageGen, testImageGenModel } from '@ai-graph-team/runner/src/models';
 import { createActivities, NodeStepInput } from './activities/createActivities';
 import dotenv from 'dotenv';
 dotenv.config({quiet: true});
@@ -14,17 +14,27 @@ async function run() {
 
   const model = (name: string, input?: NodeStepInput): LanguageModel => {
     switch (name) {
-      case 'test':       return withUserInput({ input, /* delay: 0 */ })
-      case 'simple':     return simple();
-      case 'llm':        return openai('gpt-4o-mini');
-      default:           throw new Error(`Unknown model: ${name}`);
+      case 'imageGen': return withImageGen({ input });
+      case 'test':     return withUserInput({ input, delay: 0 })
+      case 'delayed':  return withUserInput({ input, delay: () => 100 + Math.random() * 500 })
+      case 'simple':   return simple();
+      case 'ai':       return openai('gpt-4o-mini');
+      default:         throw new Error(`Unknown model: ${name}`);
+    }
+  }
+
+  const imageModel = (name: string) => {
+    switch (name) {
+      case 'test': return testImageGenModel();
+      case 'ai':   return openai.image('dall-e-3');
+      default:     throw new Error(`Unknown image model: ${name}`);
     }
   }
 
   const worker = await Worker.create({
     connection,
     workflowsPath: require.resolve('./workflows'),
-    activities: createActivities({ model }),
+    activities: createActivities({ model, imageModel }),
     taskQueue: 'graph-queue',
     namespace: process.env.TEMPORAL_NAMESPACE || 'default',
   });

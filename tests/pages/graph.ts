@@ -16,6 +16,13 @@ export class GraphPage {
     await this.page.waitForURL(`/graph/${savedData.id}`);
     return savedData
   }
+  async runWithTestModel(model: string) {
+    await this.page.route('**/api/graph/*/run', async (route, request) => {
+      await route.continue({
+        headers: { ...(await request.allHeaders()), 'X-Test-Model': model },
+      });
+    });
+  }
   async captureNewGraphData(): Promise<Graph> {
     const response = await this.page.waitForResponse((response) =>
       response.url().includes('/api/graph'),

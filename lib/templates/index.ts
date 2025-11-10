@@ -2,6 +2,7 @@ import type { GraphJSON } from '../graph-schema';
 import { STARTER_GRAPH } from './starter';
 import { PRESCRIPTIVE_GRAPH } from './prescriptive';
 import { SVG_GRAPH } from './svg-generator';
+import { IMAGE_GRAPH } from './image-generator';
 
 export interface GraphTemplate {
   id: string;
@@ -28,6 +29,12 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
     name: 'SVG Generator',
     description: 'A graph that generates an SVG image and another SVG image framing it.',
     data: SVG_GRAPH,
+  },
+  {
+    id: 'image-generator',
+    name: 'Image Generator',
+    description: 'A graph that generates animage.',
+    data: IMAGE_GRAPH,
   },
 ];
 

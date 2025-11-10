@@ -139,6 +139,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     graph: graph.data as Graph, 
     workflowId: workflowId,
     model: request.headers.get('X-Test-Model') || undefined,
+    imageModel: request.headers.get('X-Test-ImageModel') || undefined,
     fromNode,
     initial: fromRun ? {
       runId: fromRun.id,

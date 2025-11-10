@@ -3,8 +3,9 @@ import { Node, Transcript, FileRef } from '../types';
 import { zodFromSchema } from '../json-schema-to-zod';
 import { evaluateTemplate } from '../cel';
 import { writeTextFile, readTextFile } from '../files';
+import { generateAndSaveImage } from '../images';
 import {
-  generateText, LanguageModel, tool,
+  generateText, LanguageModel, ImageModel, tool,
   ModelMessage, TextPart, ToolCallPart, ToolResultPart, Tool, 
 } from 'ai';
 import { z } from 'zod';
@@ -19,13 +20,12 @@ export type NodeStepInput = {
   files: Record<string, FileRef>;
   prompt: any;
   model?: string;
+  imageModel?: string;
   inputs: Record<string, any>;
 }
 
-type GenerateTextResponse = Awaited<ReturnType<typeof generateText>>;
-
 export type NodeStepResult = {
-  finishReason: GenerateTextResponse['finishReason'];
+  finishReason: Awaited<ReturnType<typeof generateText>>['finishReason'];
   messages: Transcript,
   files: FileRef[],
 };
@@ -33,7 +33,14 @@ export type NodeStepResult = {
 export type ToolCallInput = {
   runId: string;
   toolCall: ToolCallPart;
-  nodeId?: string;
+  node: Node;
+  model?: string;
+  imageModel?: string;
+}
+
+export type ToolCallResult = {
+  toolResult: ToolResultPart;
+  files: FileRef[];
 }
 
 const tools: Record<string, Tool> = {
@@ -45,12 +52,23 @@ const tools: Record<string, Tool> = {
       default: z.string().optional().describe('The default value for the input'),
     }),
   }),
+  generateImage: tool({
+    description: 'Generate an image using AI based on a text prompt',
+    inputSchema: z.object({
+      prompt: z.string().describe('A detailed description of the image to generate'),
+      filename: z.string().optional().default('generated-image.png').describe('The user-facing name of the image file'),
+      size: z.enum(['1024x1024', '1792x1024', '1024x1792']).optional().default('1024x1024').describe('The size of the generated image'),
+      style: z.enum(['vivid', 'natural']).optional().default('vivid').describe('The style of the image: vivid (hyper-real and dramatic) or natural (more natural, less hyper-real)'),
+      quality: z.enum(['standard', 'hd']).optional().default('hd').describe('The quality of the image'),
+    }),
+  }),
 };
 
 type Dependencies = {
   nodeStepImpl?: (input: NodeStepInput) => Promise<NodeStepResult>;
-  toolCallImpl?: (toolCall: ToolCallInput) => Promise<ToolResultPart>;
+  toolCallImpl?: (toolCall: ToolCallInput) => Promise<ToolCallResult>;
   model?: LanguageModel | ((name: string, input?: NodeStepInput) => LanguageModel);
+  imageModel?: ImageModel | ((name: string) => ImageModel);
 };
 
 export function createActivities(deps: Dependencies = {}) {
@@ -100,7 +118,7 @@ export function createActivities(deps: Dependencies = {}) {
     };
     
     try {
-      const model = typeof deps.model === 'function' ? deps.model(input.model || 'llm', input) : deps.model;
+      const model = typeof deps.model === 'function' ? deps.model(input.model || 'ai', input) : deps.model;
       if (!model) { throw new Error(`Could not resolve model for node ${input.node.id}`); }
       const result = await generateText({
         model, 
@@ -194,10 +212,36 @@ export function createActivities(deps: Dependencies = {}) {
     return result;
   }
 
-  async function makeToolCall(input: ToolCallInput): Promise<ToolResultPart> {
+  async function makeToolCall(input: ToolCallInput): Promise<ToolCallResult> {
     if (deps.toolCallImpl) { return await deps.toolCallImpl(input); }
+
+    const files: FileRef[] = []; // Keep track of files created during this step
+
+    // Clone the tools object and add input-specific execute function
+    const callableTools: Record<string, Tool> = {
+      ...tools,
+      generateImage: tool({
+        ...tools['generateImage'],
+        execute: async ({ prompt, filename, size, style, quality }: z.infer<typeof tools.generateImage.inputSchema>) => {
+          const imageModel = typeof deps.imageModel === 'function' ? deps.imageModel(input.imageModel || 'ai') : deps.imageModel;
+          if (!imageModel) { throw new Error(`Could not resolve image model for node ${input.node.id}`); }
+          
+          const fileRef = await generateAndSaveImage(
+            input.runId,
+            input.node.id,
+            prompt,
+            filename,
+            { model: imageModel, size, style, quality }
+          );  
+          files.push(fileRef);
+          return fileRef;
+        },
+      })
+    }
+
+    // Call the tool
     const toolName = input.toolCall.toolName;
-    const toolDef: Tool = tools[toolName];
+    const toolDef: Tool = callableTools[toolName];
     let value: any;
     if (toolDef && toolDef.execute) {
       value = await (toolDef.execute as any)(input.toolCall.input);
@@ -206,13 +250,13 @@ export function createActivities(deps: Dependencies = {}) {
       throw new Error(`Unimplemented tool call "${input.toolCall.toolName}"`);
     }
     return {
-      type: 'tool-result',
-      toolName: input.toolCall.toolName,
-      toolCallId: input.toolCall.toolCallId,
-      output: {
-        type: 'json',
-        value,
-      } as any,
+      files,
+      toolResult: {
+        type: 'tool-result',
+        toolName: input.toolCall.toolName,
+        toolCallId: input.toolCall.toolCallId,
+        output: { type: 'json', value } as any,
+      },
     };
   }
 

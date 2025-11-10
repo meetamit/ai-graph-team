@@ -178,10 +178,10 @@ function genString(s: {
   // If data is provided, use it to generate the string value.
   if (ctx.data && path.length > 0) {
     const _path = path.concat();
-    let value: string | undefined;
+    let value: string | undefined = ctx.data;
     while (_path.length > 0) {
       const key = _path.shift();
-      if (key) { value = ctx.data[key]; }
+      if (key && value && typeof value === 'object') { value = value?.[key]; }
       if (value === undefined) break;
     }
     if (value !== undefined) return value;

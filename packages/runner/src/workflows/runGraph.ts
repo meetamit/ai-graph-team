@@ -143,9 +143,10 @@ export const getTranscripts = defineQuery<Array<[NodeId, Transcript]>, [number]>
 export const getFiles = defineQuery<Record<string, FileRef>>('getFiles');
 
 export async function runGraphWorkflow({
-  graph, prompt, fromNode, initial, model
+  graph, prompt, fromNode, initial, model, imageModel
 }: {
-  graph: Graph, prompt?: any, fromNode?: NodeId, initial?: RunState, model?: string
+  graph: Graph, prompt?: any, fromNode?: NodeId, initial?: RunState,
+  model?: string, imageModel?: string,
 }): Promise<RunState> {
   let neededInput: NeededInput[] = [];
   setHandler(receiveInput, (provided: ProvidedInput[]) => {
@@ -202,7 +203,7 @@ export async function runGraphWorkflow({
     let resultObject: any;
     for (let i = 0; i < MAX_STEPS && !resultObject; i++) {
       stepResult = await (i === 0 ? takeNodeFirstStep : takeNodeFollowupStep)({
-        transcript, i, runId, model,
+        transcript, i, runId, model, imageModel,
         prompt: input.state.prompt, 
         node: input.node, 
         inputs: input.inputs,
@@ -286,7 +287,13 @@ export async function runGraphWorkflow({
                 },
               }
             } else {
-              toolResult = await makeToolCall({ runId: state.runId, toolCall, nodeId: input.node.id });
+              const result = await makeToolCall({
+                toolCall, model, imageModel,
+                runId: state.runId,
+                node: input.node,
+              });
+              toolResult = result.toolResult;
+              for (const file of result.files) { state.files[file.id] = file; }
             }
             return toolResult;
           })

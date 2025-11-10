@@ -51,6 +51,7 @@ export default defineConfig({
        * });`
        */
       'X-Test-Model': 'test',
+      'X-Test-ImageModel': 'test',
     },
   },
 

@@ -46,6 +46,7 @@ export default function GraphBasicNode({
           ? <>
               <div>{output.message}</div>
               <JsonView data={output.data} style={defaultStyles} shouldExpandNode={collapseAllNested} />
+              <Preview data={output.data} />
             </>
         : output.type === 'text'
           ? <div>{output.text}</div>
@@ -56,4 +57,12 @@ export default function GraphBasicNode({
     </div>
     <Handle type="source" position={Position.Bottom} />
   </>
+}
+
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+function Preview({ data }: { data: any }) {
+  if (IMAGE_TYPES.includes(data.file && data.file.mediaType)) {
+    return <img src={`/api/files/${data.file.id}`} alt={data.file.filename} />
+  }
+  return null;
 }
