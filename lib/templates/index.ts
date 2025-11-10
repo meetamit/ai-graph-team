@@ -1,7 +1,7 @@
 import type { GraphJSON } from '../graph-schema';
 import { STARTER_GRAPH } from './starter';
 import { PRESCRIPTIVE_GRAPH } from './prescriptive';
-import { IMAGER_GRAPH } from './imager';
+import { SVG_GRAPH } from './svg-generator';
 
 export interface GraphTemplate {
   id: string;
@@ -24,10 +24,10 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
     data: PRESCRIPTIVE_GRAPH,
   },
   {
-    id: 'imager',
-    name: 'Imager',
-    description: 'A graph that generates an image based on the user\'s input.',
-    data: IMAGER_GRAPH,
+    id: 'svg-generator',
+    name: 'SVG Generator',
+    description: 'A graph that generates an SVG image and another SVG image framing it.',
+    data: SVG_GRAPH,
   },
 ];
 

@@ -1,5 +1,5 @@
 import type { InferSelectModel } from 'drizzle-orm';
-import { pgTable, varchar, uuid, text, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, uuid, text, timestamp, jsonb, bigint } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
@@ -18,7 +18,6 @@ export const graph = pgTable('graph', {
 
 export const graphRun = pgTable('graph_run', {
   id: uuid('id').defaultRandom().primaryKey(),
-  runId: uuid('run_id').notNull(),
   graphId: uuid('graph_id').references(() => graph.id),
   ownerId: uuid('owner_id').references(() => user.id),
   workflowId: varchar('workflow_id', { length: 128 }).notNull(),
@@ -32,6 +31,21 @@ export const graphRun = pgTable('graph_run', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const file = pgTable('file', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  runId: uuid('run_id').notNull().references(() => graphRun.id, { onDelete: 'cascade' }),
+  nodeId: text('node_id'),
+  kind: varchar('kind', { length: 16 }).notNull().$type<'generated' | 'upload' | 'external'>(),
+  uri: text('uri').notNull(),
+  filename: text('filename').notNull(),
+  mediaType: text('media_type').notNull(),
+  bytes: bigint('bytes', { mode: 'number' }).notNull(),
+  sha256: text('sha256').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  metadata: jsonb('metadata'),
+});
+
 export type User = InferSelectModel<typeof user>;
 export type Graph = InferSelectModel<typeof graph>;
 export type GraphRun = InferSelectModel<typeof graphRun>;
+export type File = InferSelectModel<typeof file>;

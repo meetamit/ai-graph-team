@@ -13,6 +13,8 @@ import {
   type Graph,
   graphRun,
   type GraphRun,
+  file,
+  type File,
 } from './schema';
 
 // Optionally, if not using email/pass login, you can
@@ -101,9 +103,9 @@ export async function deleteGraph({ id, ownerId }: { id: string, ownerId: string
   }
 }
 
-export async function createGraphRun({ runId, graphId, ownerId, graph, workflowId }: { runId: string, graphId: string, ownerId: string, graph: GraphJSON, workflowId: string }): Promise<GraphRun[]> {
+export async function createGraphRun({ id, graphId, ownerId, graph, workflowId }: { id: string, graphId: string, ownerId: string, graph: GraphJSON, workflowId: string }): Promise<GraphRun[]> {
   try {
-    return await db.insert(graphRun).values({ runId, graphId, ownerId, graph, workflowId }).returning();
+    return await db.insert(graphRun).values({ id, graphId, ownerId, graph, workflowId }).returning();
   } catch (error) {
     console.error('Failed to create graph run in database');
     throw error;
@@ -148,3 +150,38 @@ export async function updateGraphRun(
     throw error;
   }
 }
+
+export async function createFileRef({
+  id, runId, nodeId, kind, uri, filename, mediaType, bytes, sha256, metadata,
+}: {
+  id: string;
+  runId: string;
+  nodeId?: string | null;
+  kind: 'generated' | 'upload' | 'external';
+  uri: string;
+  filename: string;
+  mediaType: string;
+  bytes: number;
+  sha256: string;
+  metadata?: any;
+}): Promise<File[]> {
+  try {
+    return await db.insert(file).values({
+      id, runId, nodeId, kind, uri, filename, mediaType, bytes, sha256, metadata,
+    }).returning();
+  } catch (error) {
+    console.error('Failed to create file in database');
+    throw error;
+  }
+}
+
+export async function getFileRefById({ id }: { id: string }): Promise<File | null> {
+  try {
+    const [selectedFile] = await db.select().from(file).where(eq(file.id, id));
+    return selectedFile;
+  } catch (error) {
+    console.error('Failed to get file by id from database');
+    throw error;
+  }
+}
+

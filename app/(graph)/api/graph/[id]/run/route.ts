@@ -2,7 +2,10 @@ import { TransformStream } from 'stream/web';
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/app/(auth)/auth";
-import { getGraphById, createGraphRun, getLatestGraphRun, getGraphRunById, updateGraphRun } from "@/lib/db/queries";
+import {
+  getGraphById, getLatestGraphRun, getGraphRunById, 
+  createGraphRun, updateGraphRun, createFileRef
+} from "@/lib/db/queries";
 import { GraphRun } from '@/lib/db/schema'
 import {
   GraphWorkflowClient, 
@@ -67,7 +70,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
           let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent | GraphRunTranscriptEvent | GraphRunFilesEvent;
           for await (event of runner.events(graphRun.workflowId)) {
-            await sendEvent(event);
             if (event.type === 'transcript') {
               transcripts.push(...event.payload);
             } else if (event.type === 'output') {
@@ -75,8 +77,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             } else if (event.type === 'status') {
               statuses = event.payload;
             } else if (event.type === 'files') {
-              files = event.payload;
+              for (const fileRef of Object.values(event.payload)) {
+                const file = await createFileRef(fileRef);
+              }
             }
+            await sendEvent(event);
           }
           const status = Object.values(statuses).every(s => s === 'done') ? 'done' : Object.values(statuses).some(s => s === 'error') ? 'error' : 'running';
           
@@ -105,22 +110,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: graphId } = await params;
   const body = await request.json().catch(() => ({}));
   const { fromNode, fromRun: fromRunId } = body as { fromNode?: string, fromRun?: string };
 
   let fromRun: GraphRun | null = null;
   if (fromNode) {
     if (!fromRunId) {
-      throw new Error('Must provide runId to run from a node');
+      throw new Error('Must provide run id to run from a node');
     }
     fromRun = await getGraphRunById({ id: fromRunId });
     if (!fromRun) {
-      throw new Error('Invalid runId');
+      throw new Error('Invalid run id');
     }
   }
   
-  const graph = await getGraphById({ id });
+  const graph = await getGraphById({ id: graphId });
   if (!graph) {
     return new NextResponse('Graph not found', { status: 404 });
   }
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     workflowId: workflowId,
     fromNode,
     initial: fromRun ? {
-      runId: fromRun.runId,
+      runId: fromRun.id,
       status: fromRun.statuses as any/*  as NodeStatuses */,
       outputs: fromRun.outputs as any/*  as Record<NodeId, any> */,
       transcripts: fromRun.transcripts as any/*  as Array<[NodeId, GraphNodeMessage[]]> */,
@@ -143,7 +148,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     } : undefined
   })
   const [graphRun] = await createGraphRun({
-    runId,
+    id: runId,
     workflowId: workflowId,
     graphId: graph.id,
     ownerId: session.user.id,
@@ -159,11 +164,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: graphId } = await params;
   const { runId, inputs } = await request.json() as { runId: string, inputs: ProvidedInput[] };
 
   const graphRun = await getGraphRunById({ id: runId });
-  if (!graphRun || graphRun.graphId !== id) {
+  if (!graphRun || graphRun.graphId !== graphId) {
     return new NextResponse('Graph run not found', { status: 404 });
   }
 

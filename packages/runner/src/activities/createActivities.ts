@@ -79,7 +79,7 @@ export function createActivities(deps: Dependencies = {}) {
           content: z.string().describe('The content of the file'),
         }),
         execute: async ({ content, filename, mediaType }: z.infer<typeof tools.createFile.inputSchema>) => {
-          const fileRef = await writeTextFile(input.runId, input.node.id, content, filename, mediaType, 'node');
+          const fileRef = await writeTextFile(input.runId, input.node.id, content, filename, mediaType, 'run');
           files.push(fileRef)
           return fileRef;
         },

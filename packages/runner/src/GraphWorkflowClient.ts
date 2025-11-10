@@ -142,6 +142,7 @@ export class GraphWorkflowClient {
     let lastStatus: NodeStatuses = {};
     let lastNeeded: NeededInput[] = [];
     let lastTranscripts: Array<[NodeId, Transcript]> = [];
+    let lastFiles: Record<string, FileRef> = {};
     while (true && Date.now() - t0 < 10 * 60e3 /* 10 minutes timeout */) {
       const statuses: NodeStatuses = await handle.query('getNodeStatuses') as NodeStatuses;
       const changed: Array<[NodeId, NodeStatus]> = Object.entries(statuses).filter(([nodeId, status]) => status !== lastStatus[nodeId])
@@ -173,6 +174,13 @@ export class GraphWorkflowClient {
           yield { type: 'transcript', payload: newTranscripts };
           lastTranscripts = [...lastTranscripts, ...newTranscripts];
         }
+
+        const files: Record<string, FileRef> = await handle.query('getFiles');
+        const newFiles = Object.fromEntries(Object.entries(files).filter(([id]) => !lastFiles[id]));
+        if (Object.keys(newFiles).length) {
+          yield { type: 'files', payload: newFiles };
+          lastFiles = files;
+        }
       }
 
       lastStatus = statuses;
@@ -180,13 +188,7 @@ export class GraphWorkflowClient {
       if (
         Object.values(statuses).every(s => s === 'done') || 
         Object.values(lastStatus).includes('error')
-      ) {
-        const files: Record<string, FileRef> = await handle.query('getFiles');
-        if (Object.keys(files).length) {
-          yield { type: 'files', payload: files };
-        }
-        break;
-      }
+      ) { break; }
 
       await new Promise(resolve => setTimeout(resolve, 500));
     }

@@ -20,11 +20,11 @@ const fileSchema = {
       description: "The media type of the file"
     },
   },
-  required: ["uri", "filename", "mediaType"]
+  required: ["id", "uri", "filename", "mediaType"]
 }
 
 // A friendly starter template for new graphs
-export const IMAGER_GRAPH: GraphJSON = {
+export const SVG_GRAPH: GraphJSON = {
   nodes: [
     {
       id: "user_input",

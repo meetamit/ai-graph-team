@@ -3,7 +3,8 @@ import { useRouter } from "next/navigation";
 import { Graph, GraphRun } from "@/lib/db/schema";
 import type { 
   GraphJSON, NeededInput, ProvidedInput, NodeId,
-  GraphRunEvent, GraphRunStatusEvent, GraphRunNeededInputEvent,GraphRunNodeOutputEvent, GraphRunRecordEvent, GraphRunErrorEvent, GraphRunTranscriptEvent,
+  GraphRunEvent, GraphRunStatusEvent, GraphRunNeededInputEvent,GraphRunNodeOutputEvent, 
+  GraphRunRecordEvent, GraphRunErrorEvent, GraphRunTranscriptEvent, GraphRunFilesEvent,
   NodeStatuses, GraphNodeMessage,
 } from "@/lib/graph-schema";
 import { toast } from "@/components/toast";
@@ -136,6 +137,10 @@ export function useGraph(graph: Graph) {
     onGraphRunEvent(eventSource, 'transcript', (payload: GraphRunTranscriptEvent['payload']) => {
       console.log('TRANSCRIPT', payload);
       setTranscripts(transcripts => [...transcripts, ...payload]);
+    });
+
+    onGraphRunEvent(eventSource, 'files', (payload: GraphRunFilesEvent['payload']) => {
+      console.log('FILES', payload);
     });
     
     onGraphRunEvent(eventSource, 'needed', (payload: GraphRunNeededInputEvent['payload']) => {

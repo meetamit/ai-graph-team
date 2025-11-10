@@ -21,7 +21,7 @@ export type Transcript = Array<ModelMessage>;
 export type FileRef = {
   id: string;                 // uuid
   runId: string;              // which run created/uses it
-  nodeId?: string | null;     // which node created it (if any)
+  nodeId?: string;            // which node created it (if any)
   kind: 'generated' | 'upload' | 'external';
   uri: string;                // 'file://…' now; 's3://…' later. Never relative.
   filename: string;           // user-facing name; safe, sanitized
