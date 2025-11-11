@@ -3,7 +3,6 @@ import { MockLanguageModelV3 } from 'ai/test';
 import { makeHarness, TestHarness, Graph } from './helpers/testEnv';
 import { createActivities } from '../src/activities/createActivities';
 import withUserInput from '../src/models/withUserInput';
-import { extractNodeData, extractMessageData } from '../src/models/utils';
 
 describe('File tools', () => {
   const workflowsPath = fileURLToPath(new URL('../src/workflows', import.meta.url));
@@ -16,43 +15,45 @@ describe('File tools', () => {
   });
 
   it('creates, reads, and lists files', async () => {
-    const impl: MockLanguageModelV3 = withUserInput({ delay: 0 }) as MockLanguageModelV3;
     h = await makeHarness({
       taskQueue, workflowsPath, idBase,
       activities: createActivities({
-        model: new MockLanguageModelV3({
-          doGenerate: async (args): Promise<any> => {
-            const { prompt, tools } = args;
-            const { id: nodeId } = extractNodeData(prompt) || {};
+        model: (name, input) => {
+          const impl: MockLanguageModelV3 = withUserInput({ input, delay: 0 }) as MockLanguageModelV3;
+          return new MockLanguageModelV3({
+            doGenerate: async (args): Promise<any> => {
+              const { prompt, tools } = args;
+              const { id: nodeId } = input?.node || {};
 
-            if (nodeId?.startsWith('file_creator_') && prompt.length === 2) {
-              return {
-                usage: {},
-                finishReason: 'tool-calls',
-                content: [{
-                  type: 'tool-call',
-                  toolCallId: `call_by_${nodeId}`,
-                  toolName: 'createFile',
-                  input: JSON.stringify({ filename: `test_${nodeId}.txt`, content: `Hello, world! ${nodeId}` }) 
-                }],
-              };
+              if (nodeId?.startsWith('file_creator_') && prompt.length === 2) {
+                return {
+                  usage: {},
+                  finishReason: 'tool-calls',
+                  content: [{
+                    type: 'tool-call',
+                    toolCallId: `call_by_${nodeId}`,
+                    toolName: 'createFile',
+                    input: JSON.stringify({ filename: `test_${nodeId}.txt`, content: `Hello, world! ${nodeId}` }) 
+                  }],
+                };
+              }
+              else if (nodeId === 'file_reader' && prompt.length === 2) {
+                const fileId = input && input.inputs.file_creator_1.data.id;
+                return {
+                  usage: {},
+                  finishReason: 'tool-calls',
+                  content: [{
+                    type: 'tool-call',
+                    toolCallId: `call_by_${nodeId}`,
+                    toolName: 'readFile',
+                    input: JSON.stringify({ fileId }) 
+                  }],
+                };
+              }
+              return impl.doGenerate(args); // Generate the default result
             }
-            else if (nodeId === 'file_reader' && prompt.length === 2) {
-              const fileId = extractMessageData(prompt, (data) => data.file_creator_1.data).file_creator_1.data.id;
-              return {
-                usage: {},
-                finishReason: 'tool-calls',
-                content: [{
-                  type: 'tool-call',
-                  toolCallId: `call_by_${nodeId}`,
-                  toolName: 'readFile',
-                  input: JSON.stringify({ fileId }) 
-                }],
-              };
-            }
-            return impl.doGenerate(args); // Generate the default result
-          }
-        })
+          });
+        }
       }),
     });
 

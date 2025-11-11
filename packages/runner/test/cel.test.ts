@@ -85,10 +85,7 @@ describe('CEL Template', () => {
     });
   
     it('generates prompts from instructions containing CEL expressions', async () => {
-      h = await makeHarness({
-        taskQueue, workflowsPath, idBase,
-        activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
-      });
+      h = await makeHarness({ taskQueue, workflowsPath, idBase });
 
       const instructions = [
         "Use the user inputs to generate a prompt",
@@ -105,10 +102,7 @@ describe('CEL Template', () => {
     });
 
     it ('generates prompts from default instructions and containing top-level prompt — when supplied', async () => {
-      h = await makeHarness({
-        taskQueue, workflowsPath, idBase,
-        activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
-      });
+      h = await makeHarness({ taskQueue, workflowsPath, idBase });
 
       const result = await h.runner.runWorkflow({ graph, prompt: 'Test prompt' });
 
@@ -130,10 +124,7 @@ describe('CEL Template', () => {
     });
 
     it ('generates prompts from default instructions and handles missing top-level prompt', async () => {
-      h = await makeHarness({
-        taskQueue, workflowsPath, idBase,
-        activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
-      });
+      h = await makeHarness({ taskQueue, workflowsPath, idBase });
 
       const result = await h.runner.runWorkflow({ graph, /* NO PROMPT */ });
 

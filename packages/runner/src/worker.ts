@@ -1,6 +1,9 @@
+
 import { Worker, NativeConnection } from '@temporalio/worker';
-import { createActivities } from './activities/createActivities';
+import { LanguageModel } from 'ai';
+import { openai } from '@ai-sdk/openai';
 import { simple, withUserInput } from '@ai-graph-team/runner/src/models';
+import { createActivities, NodeStepInput } from './activities/createActivities';
 import dotenv from 'dotenv';
 dotenv.config({quiet: true});
 
@@ -9,9 +12,15 @@ async function run() {
     address: process.env.TEMPORAL_ADDRESS,
   });
 
-  // const model = simple();
-  const model = withUserInput();
-  
+  const model = (name: string, input?: NodeStepInput): LanguageModel => {
+    switch (name) {
+      case 'test':       return withUserInput({ input, /* delay: 0 */ })
+      case 'simple':     return simple();
+      case 'llm':        return openai('gpt-4o-mini');
+      default:           throw new Error(`Unknown model: ${name}`);
+    }
+  }
+
   const worker = await Worker.create({
     connection,
     workflowsPath: require.resolve('./workflows'),

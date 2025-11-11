@@ -59,10 +59,7 @@ describe('Graph workflow', () => {
       }));
     });
     
-    h = await makeHarness({
-      taskQueue, workflowsPath, idBase, collectInput,
-      activities: createActivities(({ model: withUserInput({ delay: () => 0 }) })),
-    });
+    h = await makeHarness({ taskQueue, workflowsPath, idBase, collectInput });
 
     const result = await h.runner.runWorkflow({ graph: debatePanel as Graph });
 
@@ -163,27 +160,29 @@ describe('Graph workflow', () => {
     let simulateFailure: boolean;
     let failBeforeSiblingIsDone: boolean;
     let epoch: number = 0;
-    const impl: MockLanguageModelV3 = withUserInput({ delay: () => failBeforeSiblingIsDone ? 100 : 0 /* 300 makes position_against fail before position_for finishes */ }) as MockLanguageModelV3;
     h = await makeHarness({
       taskQueue, workflowsPath, idBase,
       activities: createActivities(({
-        model: new MockLanguageModelV3({ 
-          doGenerate: async (args) => {
-            if (simulateFailure && (args.prompt[1].content[1] as TextPart).text.includes('position_against')) {
-              await new Promise(resolve => setTimeout(resolve, 50));// Wait a bit so that "position_for" can finish
-              throw new Error('Simulated failure')
-            }
+        model: (name, input) => {
+          const impl: MockLanguageModelV3 = withUserInput({ input, delay: () => failBeforeSiblingIsDone ? 100 : 0 /* 300 makes position_against fail before position_for finishes */ }) as MockLanguageModelV3;
+          return new MockLanguageModelV3({ 
+            doGenerate: async (args) => {
+              if (simulateFailure && (args.prompt[1].content[1] as TextPart).text.includes('position_against')) {
+                await new Promise(resolve => setTimeout(resolve, 50));// Wait a bit so that "position_for" can finish
+                throw new Error('Simulated failure')
+              }
 
-            const result = await impl.doGenerate(args); // Generate the default result
+              const result = await impl.doGenerate(args); // Generate the default result
 
-            // Augment the node's message with the epoch number to make its uniqueness trackable
-            const content0 = result.content[0];
-            if (content0.type === 'tool-call' && content0.toolName === 'resolveOutput') {
-              content0.input = content0.input.replace(/"message"\:"([^"]*)",/g, `"message":"${epoch}) $1",`);
+              // Augment the node's message with the epoch number to make its uniqueness trackable
+              const content0 = result.content[0];
+              if (content0.type === 'tool-call' && content0.toolName === 'resolveOutput') {
+                content0.input = content0.input.replace(/"message"\:"([^"]*)",/g, `"message":"${epoch}) $1",`);
+              }
+              return result;
             }
-            return result;
-          }
-        })
+          });
+        }
       })),
     });
 

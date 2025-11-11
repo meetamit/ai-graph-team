@@ -1,34 +1,4 @@
-import { ModelMessage, TextPart } from 'ai';
-import { Node } from '../types';
-
-export function extractNodeData(prompt: ModelMessage[]): Node | undefined {
-  return extractMessageData(prompt, (data) => data.id && data.type && true);
-}
-
-export function extractMessageData(prompt: ModelMessage[], test: (data: any) => boolean): any {
-  for (const message of prompt) {
-    if (message.role === 'user' || message.role === 'system') {
-      const content: TextPart[] = typeof message.content === 'string' 
-        ? [{ type: 'text', text: message.content as string }] 
-        : message.content.filter(c => c.type === 'text');
-      const match = content.find(c => {
-        if (c.type === 'text') {
-          try {
-            const parsed = JSON.parse(c.text);
-            return test(parsed);
-          } catch (error) { /* Not a valid JSON string, so not the node JSON */ }
-        }
-        return false;
-      }) as TextPart;
-
-      if (match) {
-        return JSON.parse(match.text);
-      }
-    }
-  }
-}
-
-// Fixture generator for the same simplified Schema type used before.
+// Fixture generator from schema.
 type Schema =
   | {
       type: "string" | "number" | "integer" | "boolean" | "null";

@@ -1,11 +1,14 @@
 import { MockLanguageModelV3 } from 'ai/test';
 import { LanguageModel } from 'ai';
-import { fixtureFromSchema, extractNodeData } from './utils';
+import { fixtureFromSchema } from './utils';
+import { NodeStepInput } from '../activities/createActivities';
 
 export default function deterministicLanguageModel({
-  delay = () => 100 + Math.random() * 500
+  delay = () => 100 + Math.random() * 500,
+  input,
 }: {
   delay?: number | ((nodeId: string | undefined) => number)
+  input?: NodeStepInput,
 } = {} ): LanguageModel {
   return new MockLanguageModelV3({
     doGenerate: async (args): Promise<any> => {
@@ -16,7 +19,7 @@ export default function deterministicLanguageModel({
         return acc;
       }, {} as Record<string, any>);
 
-      const { id: nodeId, type: nodeType, output_schema } = extractNodeData(prompt) || {};
+      const { id: nodeId, type: nodeType, output_schema } = input?.node || {};
 
       await new Promise(resolve => setTimeout(resolve, typeof delay === 'function' ? delay(nodeId) : delay));
       

@@ -143,9 +143,9 @@ export const getTranscripts = defineQuery<Array<[NodeId, Transcript]>, [number]>
 export const getFiles = defineQuery<Record<string, FileRef>>('getFiles');
 
 export async function runGraphWorkflow({
-  graph, prompt, fromNode, initial
+  graph, prompt, fromNode, initial, model
 }: {
-  graph: Graph, prompt?: any, fromNode?: NodeId, initial?: RunState
+  graph: Graph, prompt?: any, fromNode?: NodeId, initial?: RunState, model?: string
 }): Promise<RunState> {
   let neededInput: NeededInput[] = [];
   setHandler(receiveInput, (provided: ProvidedInput[]) => {
@@ -202,7 +202,7 @@ export async function runGraphWorkflow({
     let resultObject: any;
     for (let i = 0; i < MAX_STEPS && !resultObject; i++) {
       stepResult = await (i === 0 ? takeNodeFirstStep : takeNodeFollowupStep)({
-        transcript, i, runId,
+        transcript, i, runId, model,
         prompt: input.state.prompt, 
         node: input.node, 
         inputs: input.inputs,

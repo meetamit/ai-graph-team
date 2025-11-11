@@ -138,6 +138,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const { description: { runId } } = await runner.startWorkflow({ 
     graph: graph.data as Graph, 
     workflowId: workflowId,
+    model: request.headers.get('X-Test-Model') || undefined,
     fromNode,
     initial: fromRun ? {
       runId: fromRun.id,

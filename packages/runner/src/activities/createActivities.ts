@@ -1,6 +1,5 @@
 import { log } from '@temporalio/activity';
 import { Node, Transcript, FileRef } from '../types';
-import simpleLanguageModel from '../models/simple';
 import { zodFromSchema } from '../json-schema-to-zod';
 import { evaluateTemplate } from '../cel';
 import { writeTextFile, readTextFile } from '../files';
@@ -19,6 +18,7 @@ export type NodeStepInput = {
   transcript: Transcript;
   files: Record<string, FileRef>;
   prompt: any;
+  model?: string;
   inputs: Record<string, any>;
 }
 
@@ -50,7 +50,7 @@ const tools: Record<string, Tool> = {
 type Dependencies = {
   nodeStepImpl?: (input: NodeStepInput) => Promise<NodeStepResult>;
   toolCallImpl?: (toolCall: ToolCallInput) => Promise<ToolResultPart>;
-  model?: LanguageModel;
+  model?: LanguageModel | ((name: string, input?: NodeStepInput) => LanguageModel);
 };
 
 export function createActivities(deps: Dependencies = {}) {
@@ -96,12 +96,14 @@ export function createActivities(deps: Dependencies = {}) {
           const content = await readTextFile(fileRef);
           return content;
         },
-      }),    
+      }),
     };
     
     try {
+      const model = typeof deps.model === 'function' ? deps.model(input.model || 'llm', input) : deps.model;
+      if (!model) { throw new Error(`Could not resolve model for node ${input.node.id}`); }
       const result = await generateText({
-        model: deps.model || simpleLanguageModel(), 
+        model, 
         messages: input.transcript,
         tools: runTools,
         toolChoice: 'required',

@@ -35,6 +35,23 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    
+    /* Headers to add to all requests */
+    extraHTTPHeaders: {
+      /**
+       * Instructs the app to run temporal activities with a deterministic MockLanguageModel. 
+       * Individual tests can override this with:
+       * `await page.route('**\/api/graph/*\/run', async (route, request) => {
+       *   await route.continue({
+       *     headers: {
+       *       ...headers,
+       *       'X-Test-Model': 'fileWriter',
+       *     },
+       *   });
+       * });`
+       */
+      'X-Test-Model': 'test',
+    },
   },
 
   /* Configure global timeout for each test */

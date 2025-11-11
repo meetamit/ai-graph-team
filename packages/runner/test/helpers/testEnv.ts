@@ -2,6 +2,8 @@ import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Worker, WorkerOptions, NativeConnection } from '@temporalio/worker';
 import { Connection } from '@temporalio/client';
 import { GraphWorkflowClient, NeededInput, ProvidedInput, Graph } from '../../src/GraphWorkflowClient';
+import { createActivities } from '../../src/activities/createActivities';
+import withUserInput from '../../src/models/withUserInput';
 import dotenv from 'dotenv';
 dotenv.config({quiet: true});
 
@@ -16,7 +18,7 @@ export type { NeededInput, ProvidedInput, Graph };
 
 export async function makeHarness(opts: {
   workflowsPath: string;
-  activities: Record<string, any>;
+  activities?: Record<string, any>;
   taskQueue: string;
   idBase?: string;
   collectInput?: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
@@ -25,7 +27,7 @@ export async function makeHarness(opts: {
   const workerOptions: WorkerOptions = {
     taskQueue: opts.taskQueue,
     workflowsPath: opts.workflowsPath,
-    activities: opts.activities,
+    activities: opts.activities || createActivities(({ model: (name, input) => withUserInput({ input, delay: () => 0 }) })),
     connection: env.nativeConnection
   }
   
