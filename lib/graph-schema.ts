@@ -15,6 +15,7 @@ export const NodeSchema = z.object({
   intent: z.string().optional(),
   instructions: z.array(z.string()).optional(),
   output_schema: z.any().optional(),
+  tools: z.array(z.any()).optional(),
 });
 
 export const EdgeSchema = z.object({

@@ -14,8 +14,8 @@ async function run() {
 
   const model = (name: string, input?: NodeStepInput): LanguageModel => {
     switch (name) {
-      case 'imageGen': return withImageGen({ input });
       case 'test':     return withUserInput({ input, delay: 0 })
+      case 'imageGen': return withImageGen({ input });
       case 'delayed':  return withUserInput({ input, delay: () => 100 + Math.random() * 500 })
       case 'simple':   return simple();
       case 'ai':       return openai('gpt-4o-mini');

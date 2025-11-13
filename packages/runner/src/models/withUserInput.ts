@@ -65,7 +65,13 @@ export default function deterministicLanguageModel({
       } else if (nodeId && nodeType === 'llm') {
         if (toolsById['resolveOutput']) {
           // Extract tool results from the prompt. If they exist, use them to resolve the node output.
-          const toolResults = (prompt.find(m => m.role === 'tool')?.content.find(c => c.type === 'tool-result')?.output as any)?.value;
+          let toolResults: any[] | any = prompt
+            .filter(m => m.role === 'tool')
+            .flatMap(m => m.content)
+            .filter(c => c.type === 'tool-result')
+            .map(c => (c.output as any)?.value)
+            .filter(Boolean);
+          toolResults = toolResults.length === 1 ? toolResults[0] : toolResults;
 
           // Resolve via tool call, if available. Use output schema, if provided, to generate the resolved output.
           return {
