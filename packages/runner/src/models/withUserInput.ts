@@ -1,7 +1,7 @@
 import { MockLanguageModelV3 } from 'ai/test';
 import { LanguageModel } from 'ai';
 import { fixtureFromSchema } from './utils';
-import { NodeStepInput } from '../activities/createActivities';
+import { NodeStepInput } from '../activities';
 
 export default function deterministicLanguageModel({
   delay = () => 100 + Math.random() * 500,

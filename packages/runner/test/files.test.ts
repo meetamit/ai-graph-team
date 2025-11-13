@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'url';
 import { MockLanguageModelV3 } from 'ai/test';
 import { makeHarness, TestHarness, Graph } from './helpers/testEnv';
-import { createActivities } from '../src/activities/createActivities';
+import { createActivities } from '../src/activities';
 import withUserInput from '../src/models/withUserInput';
 
 describe('File tools', () => {
-  const workflowsPath = fileURLToPath(new URL('../src/workflows', import.meta.url));
+  const workflowsPath = fileURLToPath(new URL('../src/workflows.ts', import.meta.url));
   const taskQueue = 'test-files-queue';
   const idBase = 'test-run-files-';
   let h: TestHarness;

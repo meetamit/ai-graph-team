@@ -4,11 +4,11 @@ import { MockLanguageModelV3, } from 'ai/test';
 import { TextPart } from 'ai';
 import sinon from 'sinon';
 import { makeHarness, TestHarness, NeededInput, ProvidedInput, Graph } from './helpers/testEnv';
-import { createActivities, NodeStepInput, NodeStepResult, ToolCallInput } from '../src/activities/createActivities';
+import { createActivities, NodeStepInput, NodeStepResult } from '../src/activities';
 import withUserInput from '../src/models/withUserInput';
 import debatePanel from './fixtures/graphs/debatePanel.json' with { type: 'json' };
 
-const workflowsPath = fileURLToPath(new URL('../src/workflows', import.meta.url));
+const workflowsPath = fileURLToPath(new URL('../src/workflows.ts', import.meta.url));
 
 describe('Graph workflow', () => {
   const taskQueue = 'test-graph-queue';

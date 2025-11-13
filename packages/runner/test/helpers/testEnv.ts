@@ -2,7 +2,7 @@ import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Worker, WorkerOptions, NativeConnection } from '@temporalio/worker';
 import { Connection } from '@temporalio/client';
 import { GraphWorkflowClient, NeededInput, ProvidedInput, Graph } from '../../src/GraphWorkflowClient';
-import { createActivities } from '../../src/activities/createActivities';
+import { createActivities } from '../../src/activities';
 import withUserInput from '../../src/models/withUserInput';
 import dotenv from 'dotenv';
 dotenv.config({quiet: true});

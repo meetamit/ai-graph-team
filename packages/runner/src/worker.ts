@@ -2,8 +2,8 @@
 import { Worker, NativeConnection } from '@temporalio/worker';
 import { LanguageModel } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { simple, withUserInput, withImageGen, testImageGenModel } from '@ai-graph-team/runner/src/models';
-import { createActivities, NodeStepInput } from './activities/createActivities';
+import { simple, withUserInput, withImageGen, testImageGenModel } from './models';
+import { createActivities, NodeStepInput } from './activities';
 import dotenv from 'dotenv';
 dotenv.config({quiet: true});
 

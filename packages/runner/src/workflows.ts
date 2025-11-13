@@ -1,13 +1,13 @@
+import { ModelMessage, ToolCallPart, ToolResultPart } from 'ai';
 import { proxyActivities, log, defineSignal, defineQuery, setHandler, workflowInfo } from '@temporalio/workflow';
 import { 
   RunState, NeededInput, ProvidedInput, NodeStatuses,
   Transcript, FileRef,
   NodeId, Node, Graph, 
-} from '../types';
-import { Activities, NodeStepResult } from '../activities/createActivities';
-import { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai';
-import { zodFromSchema } from '../json-schema-to-zod';
-
+} from './types';
+import { Activities, NodeStepResult } from './activities';
+import { zodFromSchema } from './json-schema-to-zod';
+import { messagesToolCalls, messagesToolResults } from './utils';
 
 const { makeToolCall, takeNodeFirstStep, takeNodeFollowupStep } = proxyActivities<Activities>({
   startToCloseTimeout: '10 minutes',
@@ -226,16 +226,10 @@ export async function runGraphWorkflow({
       // If the step is resolved via tool calls (ATM it's the only expect way to resolve), extract the results
       else if (stepResult.finishReason === 'tool-calls') {
         // Some tools (like createFile) are auto-called in the node step, so we need to discover them to determine which tool calls are actionable here.
-        const autoResults: ToolResultPart[] = stepResult.messages
-          .flatMap(m => (typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content).map(c => c as TextPart | ToolResultPart))
-          .filter(c => c.type === 'tool-result')
-          .map(({ type, toolCallId, toolName, output }) => ({ type, toolCallId, toolName, output: { type: 'json', value: output } } as ToolResultPart));
+        const autoResults: ToolResultPart[] = messagesToolResults(stepResult.messages)
 
-        const toolCalls: ToolCallPart[] = stepResult.messages
-          .flatMap(m => (typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content).map(c => c as TextPart | ToolCallPart))
-          .filter(c => c.type === 'tool-call')
-          .filter(c => !autoResults.some(r => r.toolCallId === c.toolCallId)) // exclude auto results
-          .map(({ type, toolCallId, toolName, input }) => ({ type, toolCallId, toolName, input }));
+        const toolCalls: ToolCallPart[] = messagesToolCalls(stepResult.messages)
+          .filter((c: ToolCallPart) => !autoResults.some(r => r.toolCallId === c.toolCallId)) // exclude auto results
         
         // If there are tool calls that were not auto-resolved, call them
         const toolCallResults: ToolResultPart[] = await Promise.all(

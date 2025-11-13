@@ -1,8 +1,6 @@
 import { fileURLToPath } from 'url';
 import { evaluateTemplate } from '../src/cel';
 import { makeHarness, TestHarness, Graph } from './helpers/testEnv';
-import { createActivities } from '../src/activities/createActivities';
-import withUserInput from '../src/models/withUserInput';
 
 const inputter = {
   id: 'inputter',
@@ -75,7 +73,7 @@ describe('CEL Template', () => {
 
 
   describe('prompt generation', () => {
-    const workflowsPath = fileURLToPath(new URL('../src/workflows', import.meta.url));
+    const workflowsPath = fileURLToPath(new URL('../src/workflows.ts', import.meta.url));
     const taskQueue = 'test-cel-queue';
     const idBase = 'test-cel-';
     let h: TestHarness;

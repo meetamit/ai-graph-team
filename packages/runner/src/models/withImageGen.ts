@@ -1,7 +1,7 @@
 import { MockLanguageModelV3 } from 'ai/test';
 import { LanguageModel } from 'ai';
 import { withUserInput } from '@ai-graph-team/runner/src/models';
-import { NodeStepInput } from '../activities/createActivities';
+import { NodeStepInput } from '../activities';
 import { fixtureFromSchema } from './utils';
 
 
