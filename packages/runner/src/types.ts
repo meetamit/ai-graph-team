@@ -2,6 +2,12 @@ import { ModelMessage } from 'ai';
 
 export type NodeId = string;
 export type NodeType = 'input' | 'llm' | 'router';
+export type NodeToolConfig = {
+  name: string;
+  description?: string; // optional description to override the tool's default description
+  input?: Record<string, any>; // optional, fixed input values that the LLM won't even have to think about
+  default?: Record<string, any>; // optional, default value to use; side effect of encouraging the LLM to use that value or tool
+};
 export type Node = {
   id: NodeId;
   type: NodeType; 
@@ -9,6 +15,7 @@ export type Node = {
   intent?: string;
   instructions?: string[];
   output_schema?: any;
+  tools?: Array<string | NodeToolConfig>;
 };
 export type Edge = { from: NodeId; to: NodeId };
 export type Graph = { nodes: Node[]; edges: Edge[] };

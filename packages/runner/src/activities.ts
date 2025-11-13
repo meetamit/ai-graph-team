@@ -12,13 +12,13 @@ export type Activities = ReturnType<typeof createActivities>;
 export type NodeStepInput = {
   runId: string;
   node: Node;
+  inputs: Record<string, any>;
   i: number;
   transcript: Transcript;
   files: Record<string, FileRef>;
   prompt: any;
   model?: string;
   imageModel?: string;
-  inputs: Record<string, any>;
 }
 
 export type NodeStepResult = {
@@ -31,6 +31,7 @@ export type ToolCallInput = {
   runId: string;
   toolCall: ToolCallPart;
   node: Node;
+  inputs: Record<string, any>;
   model?: string;
   imageModel?: string;
 }
@@ -56,10 +57,20 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
     try {
       const model = typeof deps.model === 'function' ? deps.model(input.model || 'ai', input) : deps.model;
       if (!model) { throw new Error(`Could not resolve model for node ${input.node.id}`); }
+
+      // Resolve the list of active tools for the node
+      const activeTools: Set<string> = new Set(input.node.tools?.map(t => typeof t === 'string' ? t : t.name) || []);
+      activeTools.add('resolveOutput');
+      if (input.node.type === 'input') {
+        activeTools.add('collectUserInput');
+      }
+
+      // Make the LLM call
       const result = await generateText({
         model, 
         messages: input.transcript,
         tools: getNodeTools({ input, files }),
+        activeTools: Array.from(activeTools),
         toolChoice: 'required',
       });
 

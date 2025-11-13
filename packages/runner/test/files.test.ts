@@ -65,6 +65,7 @@ describe('File tools', () => {
         properties: { id: { type: "string" }, uri: { type: "string" }, filename: { type: "string" } },
         required: ["id", "uri", "filename"],
       },
+      tools: ['createFile'],
     };
     const graph: Graph = {
       nodes: [
@@ -83,6 +84,7 @@ describe('File tools', () => {
           type: 'llm',
           name: 'File Reader',
           intent: 'Read a file',
+          tools: ['readFile'],
         },
       ], 
       edges:[

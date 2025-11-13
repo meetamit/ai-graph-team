@@ -58,7 +58,8 @@ export const IMAGE_GRAPH: GraphJSON = {
       output_schema: {
         type: "object",
         properties: { file: fileSchema }
-      }
+      },
+      tools: ['generateImage'],
     },
   ],
   edges: [
