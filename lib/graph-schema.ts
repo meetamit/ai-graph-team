@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type {
-  NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, FileRef,
+  NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, FileRef, NodeToolConfig,
   GraphStatusEvent, GraphNodeOutputEvent, GraphNeededInputEvent, GraphTranscriptEvent, GraphFilesEvent,
   ModelMessage, AssistantModelMessage, UserModelMessage, SystemModelMessage, ToolModelMessage,
   ToolCallPart, ToolResultPart, TextPart,
@@ -34,7 +34,7 @@ export const GraphSchema = z.object({
 
 export type GraphJSON = z.infer<typeof GraphSchema>;
 
-export type { NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, FileRef };
+export type { NodeId, NodeStatus, NodeStatuses, NeededInput, ProvidedInput, NodeToolConfig, FileRef };
 
 export type GraphRunStatusEvent = GraphStatusEvent;
 export type GraphRunNodeOutputEvent = GraphNodeOutputEvent;

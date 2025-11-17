@@ -3,7 +3,7 @@
 import MessagesLog from "./graph-message-log";
 import NodeEditor from "./node-editor";
 import { Button } from "./ui/button";
-import type { GraphNodeMessageGroup, GraphJSON, NodeStatuses } from "@/lib/graph-schema";
+import type { GraphNodeMessageGroup, GraphJSON, NodeStatuses, NodeToolConfig } from "@/lib/graph-schema";
 
 interface NodeSidebarProps {
   messageGroups: GraphNodeMessageGroup[];
@@ -13,6 +13,7 @@ interface NodeSidebarProps {
     name: string;
     intent?: string;
     instructions?: string[];
+    tools?: Array<string | NodeToolConfig>;
   };
   onNodeChange?: (updatedNode: {
     id: string;
@@ -20,6 +21,7 @@ interface NodeSidebarProps {
     name: string;
     intent?: string;
     instructions?: string[];
+    tools?: Array<string | NodeToolConfig>;
   }) => void;
   runGraph?: (fromNode?: string) => void;
   graphData?: GraphJSON;

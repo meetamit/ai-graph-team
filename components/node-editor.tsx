@@ -5,6 +5,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import InstructionsInput from "./instructions-input";
 import SchemaEditor from "./schema-editor";
+import ToolsInput from "./tools-input";
+import type { NodeToolConfig } from "@/lib/graph-schema";
 
 interface NodeEditorProps {
   node: {
@@ -14,6 +16,7 @@ interface NodeEditorProps {
     intent?: string;
     instructions?: string[];
     output_schema?: any;
+    tools?: Array<string | NodeToolConfig>;
   };
   onChange: (updatedNode: {
     id: string;
@@ -22,6 +25,7 @@ interface NodeEditorProps {
     intent?: string;
     instructions?: string[];
     output_schema?: any;
+    tools?: Array<string | NodeToolConfig>;
   }) => void;
 }
 
@@ -30,6 +34,7 @@ export default function NodeEditor({ node, onChange }: NodeEditorProps) {
   const [intent, setIntent] = useState(node.intent || "");
   const [instructions, setInstructions] = useState(node.instructions || []);
   const [outputSchema, setOutputSchema] = useState(node.output_schema);
+  const [tools, setTools] = useState(node.tools || []);
 
   // Update local state when node prop changes
   useEffect(() => {
@@ -37,7 +42,8 @@ export default function NodeEditor({ node, onChange }: NodeEditorProps) {
     setIntent(node.intent || "");
     setInstructions(node.instructions || []);
     setOutputSchema(node.output_schema);
-  }, [node.id, node.name, node.intent, node.instructions, node.output_schema]);
+    setTools(node.tools || []);
+  }, [node.id, node.name, node.intent, node.instructions, node.output_schema, node.tools]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -70,6 +76,14 @@ export default function NodeEditor({ node, onChange }: NodeEditorProps) {
     onChange({
       ...node,
       output_schema: newOutputSchema,
+    });
+  };
+
+  const handleToolsChange = (newTools: Array<string | NodeToolConfig>) => {
+    setTools(newTools);
+    onChange({
+      ...node,
+      tools: newTools,
     });
   };
 
@@ -106,6 +120,13 @@ export default function NodeEditor({ node, onChange }: NodeEditorProps) {
         instructions={instructions}
         onChange={handleInstructionsChange}
       />
+
+      <div className="space-y-2">
+        <ToolsInput
+          tools={tools}
+          onChange={handleToolsChange}
+        />
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="node-output-schema" className="text-sm font-medium text-gray-700">
