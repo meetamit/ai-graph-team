@@ -32,6 +32,7 @@
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.24.0",
     "drizzle-orm": "^0.33.0",
+    "lucide-react": "^0.553.0",
     "next": "^15.0.0",
     "next-auth": "^5.0.0-beta.29",
     "pg": "^8.12.0",

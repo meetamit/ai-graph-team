@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PlusIcon, XIcon } from "lucide-react";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
-import { PlusIcon, CrossIcon } from "./icons";
 
 interface InstructionsInputProps {
   instructions: string[];
@@ -69,7 +69,7 @@ export default function InstructionsInput({ instructions, onChange }: Instructio
                   className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                   title="Remove instruction"
                 >
-                  <CrossIcon size={12} />
+                  <XIcon size={14} />
                 </button>
               </div>
               <textarea

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
+import { EditIcon } from "lucide-react";
 import { Graph } from "@/lib/db/schema";
 import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graph-schema";
 import { GRAPH_TEMPLATES } from "@/lib/templates";
@@ -11,7 +12,6 @@ import NodeSidebar from "./node-sidebar";
 import InputFormModal from "./input-form-modal";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { EditIcon } from "./icons";
 
 export default function EditGraph({ graph }: { graph: Graph }) {
   // Ensure the graph data has the proper structure with layouts
