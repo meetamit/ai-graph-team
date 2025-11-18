@@ -15,7 +15,9 @@
     "db:push": "drizzle-kit push",
     "worker": "npm run --prefix packages/runner worker",
     "lint": "eslint . --ext .ts,.tsx",
-    "test": "playwright test --ui"
+    "test": "playwright test --ui",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "workspaces": [
     "packages/*"
@@ -48,6 +50,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
+    "@storybook/nextjs": "^10.0.8",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
@@ -57,8 +60,10 @@
     "eslint": "^9.38.0",
     "eslint-config-next": "^15.0.0",
     "eslint-plugin-react-compiler": "^19.1.0-rc.2",
+    "eslint-plugin-storybook": "^10.0.8",
     "postcss": "^8.4.0",
     "prettier": "^3.3.0",
+    "storybook": "^10.0.8",
     "tailwindcss": "^3.4.0",
     "tsx": "^4.7.0",
     "typescript": "^5.6.0"

@@ -120,6 +120,8 @@ The application uses PostgreSQL with Drizzle ORM.
 - `npm run db:migrate`: Run database migrations
 - `npm run db:push`: Push schema changes to database
 - `npm run lint`: Run ESLint
+- `npm run storybook`: Start Storybook component explorer
+- `npm run build-storybook`: Build static Storybook
 
 ### Adding New Features
 

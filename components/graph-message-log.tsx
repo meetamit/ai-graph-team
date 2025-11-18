@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import { JsonView, allExpanded } from 'react-json-view-lite';
 import { GraphNodeToolCallPart, GraphNodeToolResultPart, GraphNodeTextPart, GraphNodeMessageGroup } from '@/lib/graph-schema';
 
+import 'react-json-view-lite/dist/index.css';
+
 function tryParseJson(maybe: string): { ok: true; value: unknown } | { ok: false } {
   try {
     // tolerate extra whitespace / code fences
