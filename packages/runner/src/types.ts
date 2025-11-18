@@ -8,6 +8,10 @@ export type NodeToolConfig = {
   input?: Record<string, any>; // optional, fixed input values that the LLM won't even have to think about
   default?: Record<string, any>; // optional, default value to use; side effect of encouraging the LLM to use that value or tool
 };
+export type NodeModelConfig = {
+  name: string;
+  args?: Record<string, any>; // optional model-specific args like temperature, maxTokens, etc.
+};
 export type Node = {
   id: NodeId;
   type: NodeType; 
@@ -16,6 +20,7 @@ export type Node = {
   instructions?: string[];
   output_schema?: any;
   tools?: Array<string | NodeToolConfig>;
+  model?: string | NodeModelConfig;
 };
 export type Edge = { from: NodeId; to: NodeId };
 export type Graph = { nodes: Node[]; edges: Edge[] };

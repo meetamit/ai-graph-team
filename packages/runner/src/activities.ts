@@ -41,10 +41,16 @@ export type ToolCallResult = {
   files: FileRef[];
 }
 
+export type ModelWithArgs = {
+  model: LanguageModel;
+  args?: Record<string, any>;
+};
+
 export type ActivitiesDependencies = {
   nodeStepImpl?: (input: NodeStepInput) => Promise<NodeStepResult>;
   toolCallImpl?: (toolCall: ToolCallInput) => Promise<ToolCallResult>;
-  model?: LanguageModel | ((name: string, input?: NodeStepInput) => LanguageModel);
+  model?: LanguageModel | ModelWithArgs | 
+          ((name: string, input?: NodeStepInput) => LanguageModel | ModelWithArgs);
   imageModel?: ImageModel | ((name: string) => ImageModel);
 };
 
@@ -55,8 +61,18 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
     const files: FileRef[] = []; // Keep track of files created during this step
 
     try {
-      const model = typeof deps.model === 'function' ? deps.model(input.model || 'ai', input) : deps.model;
-      if (!model) { throw new Error(`Could not resolve model for node ${input.node.id}`); }
+      // Prep the model and generation args
+      const configuredModel: LanguageModel | ModelWithArgs | undefined = typeof deps.model === 'function' 
+        ? deps.model(input.model || 'ai', input) 
+        : deps.model;
+      let model: LanguageModel | undefined;
+      let generationArgs: Record<string, any> = {};
+      if (configuredModel && configuredModel.hasOwnProperty('model')) {
+        model = (configuredModel as ModelWithArgs).model;
+        generationArgs = (configuredModel as ModelWithArgs).args || {};
+      } else {
+        model = configuredModel as LanguageModel;
+      }
 
       // Resolve the list of active tools for the node
       const activeTools: Set<string> = new Set(input.node.tools?.map(t => typeof t === 'string' ? t : t.name) || []);
@@ -67,7 +83,7 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
 
       // Make the LLM call
       const result = await generateText({
-        model, 
+        model, ...generationArgs,
         messages: input.transcript,
         tools: getNodeTools({ input, files }),
         activeTools: Array.from(activeTools),
