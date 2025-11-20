@@ -62,3 +62,29 @@ export const populatedNode: Node = {
     required: ["argumentsFor"]
   },
 };
+
+export const nodeWithSimpleModel: Node = {
+  id: 'llm-3',
+  type: 'llm',
+  name: 'GPT-4 Node',
+  intent: 'Use GPT-4 for complex reasoning',
+  instructions: ['Answer the question thoroughly'],
+  tools: [],
+  model: 'gpt-4o',
+};
+
+export const nodeWithModelAndArgs: Node = {
+  id: 'llm-4',
+  type: 'llm',
+  name: 'Claude with Custom Settings',
+  intent: 'Use Claude with specific temperature and token settings',
+  instructions: ['Provide creative responses'],
+  tools: [],
+  model: {
+    name: 'claude-3-5-sonnet-20241022',
+    args: {
+      temperature: 0.9,
+      maxTokens: 2000,
+    },
+  },
+};

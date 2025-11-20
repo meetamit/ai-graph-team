@@ -41,6 +41,30 @@ export default function ModelInput({ value, onChange }: Props) {
     });
   }, [searchTerm]);
 
+  const groupedModels = useMemo(() => {
+    const result = new Map<
+      string,
+      Map<string, any[]>
+    >(); // provider -> category -> models
+
+    for (const m of filteredModels as any[]) {
+      const provider = m.provider ?? 'other';
+      const category = m.category ?? 'Uncategorized';
+
+      if (!result.has(provider)) {
+        result.set(provider, new Map());
+      }
+      const byCategory = result.get(provider)!;
+
+      if (!byCategory.has(category)) {
+        byCategory.set(category, []);
+      }
+      byCategory.get(category)!.push(m);
+    }
+
+    return result;
+  }, [filteredModels]);
+
   const handleModelSelect = (modelName: string) => {
     setModelName(modelName);
     setSearchTerm('');
@@ -116,42 +140,68 @@ export default function ModelInput({ value, onChange }: Props) {
 
                 <DropdownMenu.Separator className="h-px bg-neutral-200" />
 
-                {/* List */}
-                <div className="max-h-72 overflow-y-auto py-1">
+                {/* List – grouped by provider → category */}
+                <div className="max-h-72 overflow-y-auto">
                   {filteredModels.length === 0 && (
                     <div className="px-3 py-2 text-xs text-neutral-500">
                       No models found.
                     </div>
                   )}
 
-                  {(filteredModels as any[]).map((m) => {
-                    const isSelected = m.name === modelName;
-                    return (
-                      <DropdownMenu.Item
-                        key={m.provider + ':' + m.name}
-                        onSelect={() => {
-                          handleModelSelect(m.name);
-                          setIsOpen(false);
-                        }}
-                        className="flex cursor-pointer items-start gap-2 px-3 py-2 text-sm outline-none data-[highlighted]:bg-neutral-100"
-                      >
-                        {/* Left: selected checkmark */}
-                        <div className="mt-[2px] h-4 w-4 flex-shrink-0">
-                          {isSelected && <CheckIcon className="h-4 w-4 text-blue-600" />}
+                  {Array.from(groupedModels.entries()).map(
+                    ([provider, categories]) => (
+                      <div key={provider}>
+                        {/* Provider header – sticky */}
+                        <div className="sticky top-0 z-20 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500 border-b border-neutral-100">
+                          {provider}
                         </div>
 
-                        {/* Right: name + comment */}
-                        <div className="flex flex-col">
-                          <span className="font-medium leading-tight">{m.name}</span>
-                          {m.comment && (
-                            <span className="text-xs text-neutral-500">
-                              {m.comment}{`${m.name} ${m.comment ?? ''} ${m.category ?? ''} ${m.provider ?? ''}`}
-                            </span>
-                          )}
-                        </div>
-                      </DropdownMenu.Item>
-                    );
-                  })}
+                        {Array.from(categories.entries()).map(
+                          ([category, models]) => (
+                            <div key={`${provider}:${category}`}>
+                              {/* Category header (non-clickable) */}
+                              <div className="px-3 pt-2 pb-1 text-[11px] font-medium text-neutral-500">
+                                {category}
+                              </div>
+
+                              {models.map((m: any) => {
+                                const isSelected = m.name === modelName;
+                                return (
+                                  <DropdownMenu.Item
+                                    key={m.provider + ':' + m.name}
+                                    onSelect={() => {
+                                      handleModelSelect(m.name);
+                                      setIsOpen(false);
+                                    }}
+                                    className="flex cursor-pointer items-start gap-1 px-2 py-2 text-sm outline-none data-[highlighted]:bg-neutral-100"
+                                  >
+                                    {/* Left: selected checkmark */}
+                                    <div className="mt-[2px] h-4 w-4 flex-shrink-0">
+                                      {isSelected && (
+                                        <CheckIcon className="h-4 w-4 text-blue-600" />
+                                      )}
+                                    </div>
+
+                                    {/* Right: name + comment */}
+                                    <div className="flex flex-col">
+                                      <span className="font-medium leading-tight">
+                                        {m.name}
+                                      </span>
+                                      {m.comment && (
+                                        <span className="text-xs text-neutral-500">
+                                          {m.comment}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </DropdownMenu.Item>
+                                );
+                              })}
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )
+                  )}
                 </div>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>

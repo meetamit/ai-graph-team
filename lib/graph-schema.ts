@@ -16,7 +16,7 @@ export const NodeSchema = z.object({
   instructions: z.array(z.string()).optional(),
   output_schema: z.any().optional(),
   tools: z.array(z.any()).optional(),
-  model: z.union([z.string(), z.object({ name: z.string(), args: z.object().optional() })]).optional(),
+  model: z.union([z.string(), z.object({ name: z.string(), args: z.record(z.string(), z.any()).optional() })]).optional(),
 });
 
 export const EdgeSchema = z.object({

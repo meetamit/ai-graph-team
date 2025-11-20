@@ -112,8 +112,5 @@ describe('Graph models', () => {
         args: { ...defaultArgs, temperature: 0.5, someArg: 'someValue' },
       },
     });
-
-    console.log(models.node4.model)
   });
 });
-

@@ -42,6 +42,7 @@
     "next-auth": "^5.0.0-beta.29",
     "pg": "^8.12.0",
     "postgres": "^3.4.0",
+    "radix-ui": "^1.4.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-json-view-lite": "^2.5.0",

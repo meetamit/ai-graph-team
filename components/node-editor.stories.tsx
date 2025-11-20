@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import NodeEditor from './node-editor';
-import { basicNode, populatedNode } from './node-editor.fixtures';
+import { basicNode, populatedNode, nodeWithSimpleModel, nodeWithModelAndArgs } from './node-editor.fixtures';
 
 const meta = {
   title: 'Graph/NodeEditor',
@@ -27,5 +27,15 @@ export const Basic: Story = {
 export const Populated: Story = {
   args: {
     node: populatedNode,
+  },
+};
+export const WithSimpleModel: Story = {
+  args: {
+    node: nodeWithSimpleModel,
+  },
+};
+export const WithModelAndArgs: Story = {
+  args: {
+    node: nodeWithModelAndArgs,
   },
 };
