@@ -26,6 +26,7 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
+    "@ai-graph-team/llm-providers": "^0.0.1",
     "@ai-sdk/anthropic": "^2.0.45",
     "@ai-sdk/openai": "^2.1.0-beta.7",
     "@marcbachmann/cel-js": "^3.0.1",

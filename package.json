@@ -23,6 +23,8 @@
     "packages/*"
   ],
   "dependencies": {
+    "@ai-graph-team/llm-providers": "^0.0.1",
+    "@ai-graph-team/runner": "^0.0.1",
     "@codemirror/lang-json": "^6.0.2",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.7",

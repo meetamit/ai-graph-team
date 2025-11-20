@@ -1,0 +1,8 @@
+{
+  "name": "@ai-graph-team/llm-providers",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {}
+}

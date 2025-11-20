@@ -10,4 +10,4 @@ export type {
   ModelMessage, AssistantModelMessage, UserModelMessage, SystemModelMessage, ToolModelMessage,
   ToolCallPart, ToolResultPart, TextPart,
 } from 'ai'
-export { supportedModels, openaiModels, anthropicModels } from './models/llm';
+export { supportedModels, openaiModels, anthropicModels } from '@ai-graph-team/llm-providers';
