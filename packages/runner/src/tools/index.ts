@@ -1,11 +1,11 @@
 import { tool, Tool } from 'ai';
 import { z } from 'zod';
 import { NodeToolConfig, FileRef } from '../types';
-import { zodFromSchema } from '../json-schema-to-zod';
 import { evaluateTemplate } from '../cel';
 import type { NodeStepInput, ToolCallInput, ActivitiesDependencies } from '../activities';
 import { generateImageTool } from './images';
 import { createFileTool, readFileTool } from './files';
+import { resolveOutputTool } from './resolve';
 
 const tools: Record<string, Tool> = {
   collectUserInput: tool({
@@ -52,15 +52,7 @@ export function getNodeTools(ctx: NodeToolContext): Record<string, Tool> {
   return {
     ...tools,
     ...nodeTools,
-    resolveOutput: tool({
-      description: 'Resolve the final output once the work is done',
-      inputSchema: z.object({
-        message: z.string().describe('Human readable message sumarizing the work done by the node'),
-        data: input.node.output_schema
-          ? zodFromSchema(input.node.output_schema)
-          : z.any(),
-      }),
-    }),
+    resolveOutput: resolveOutputTool(ctx),
   };
 }
 

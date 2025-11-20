@@ -71,7 +71,7 @@ export default function deterministicLanguageModel({
             .filter(c => c.type === 'tool-result')
             .map(c => (c.output as any)?.value)
             .filter(Boolean);
-          toolResults = toolResults.length === 1 ? toolResults[0] : toolResults;
+          toolResults = toolResults.length === 1 ? toolResults[0] : toolResults.length === 0 ? undefined : toolResults;
 
           // Resolve via tool call, if available. Use output schema, if provided, to generate the resolved output.
           return {
@@ -86,7 +86,7 @@ export default function deterministicLanguageModel({
                   message: `Fulfilled the node '${nodeId}'`,
                   data: output_schema
                     ? fixtureFromSchema(output_schema, { data: toolResults })
-                    : toolResults || { x: 100, y: 200, z: 300 }
+                    : toolResults || { test: true }
                 }) 
               },
             ],

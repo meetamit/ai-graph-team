@@ -2,30 +2,58 @@ import { ModelMessage } from 'ai';
 
 export type NodeId = string;
 export type NodeType = 'input' | 'llm' | 'router';
+
 export type NodeToolConfig = {
   name: string;
   description?: string; // optional description to override the tool's default description
   input?: Record<string, any>; // optional, fixed input values that the LLM won't even have to think about
   default?: Record<string, any>; // optional, default value to use; side effect of encouraging the LLM to use that value or tool
 };
+
 export type NodeModelConfig = {
   name: string;
   args?: Record<string, any>; // optional model-specific args like temperature, maxTokens, etc.
 };
+
+export type NodeRoutingMode =
+  | { mode: 'broadcast' } // default, send to all downstream edges
+  | {
+      mode?: 'llm-switch'; // LLM picks 1 or more routes
+      routes?: RouteDef[];
+      allowMultiple?: boolean; // false => exactly one
+      required?: boolean;      // true => must pick at least one
+    }
+  | {
+      mode: 'expression-switch'; // deterministic routing via CEL
+      exprLanguage: 'cel';
+      routes: {
+        id: string;       // 'success' | 'retry' | 'dead_letter'
+        expr: string;     // e.g. `output.score > 0.8`
+      }[];
+      defaultRoute?: string;
+    };
+
+export type RouteDef = {
+  id: string;               // stable route id, referenced by edges and tools
+  label?: string;           // display label
+  description?: string;     // fed to the LLM: “Use this when…”
+};
+
 export type Node = {
   id: NodeId;
   type: NodeType; 
   name: string;
   intent?: string;
   instructions?: string[];
-  output_schema?: any;
   tools?: Array<string | NodeToolConfig>;
   model?: string | NodeModelConfig;
+  output_schema?: any;
+  routing?: NodeRoutingMode;
 };
 export type Edge = { from: NodeId; to: NodeId };
 export type Graph = { nodes: Node[]; edges: Edge[] };
 
-export type NodeStatus = 'pending' | 'awaiting' | 'running' | 'done' | 'error';
+export type NodeStatus = 'pending' | 'awaiting' | 'running' | 'done' | 'error' | 'skipped';
 export type NodeStatuses = Record<NodeId, NodeStatus>;
 
 export type Transcript = Array<ModelMessage>;

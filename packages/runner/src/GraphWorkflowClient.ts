@@ -1,9 +1,9 @@
 import { Connection, Client, WorkflowHandle, WorkflowNotFoundError } from '@temporalio/client';
 import { NativeConnection } from '@temporalio/worker';
 import { runGraphWorkflow, receiveInput } from './workflows';
-import type { NeededInput, ProvidedInput, Graph, NodeStatuses, NodeStatus, NodeId, Transcript, FileRef } from './types';
+import type { NeededInput, ProvidedInput, Graph, Node, Edge, NodeStatuses, NodeStatus, NodeId, Transcript, FileRef } from './types';
 
-export type { NeededInput, ProvidedInput, Graph };
+export type { NeededInput, ProvidedInput, Graph, Node, Edge };
 
 type WorkflowEventType = 'status' |'result' | 'output' | 'needInput';
 type WorkflowEvent = { type: WorkflowEventType; payload: any };

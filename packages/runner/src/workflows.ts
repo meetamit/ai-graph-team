@@ -3,7 +3,7 @@ import { proxyActivities, log, defineSignal, defineQuery, setHandler, workflowIn
 import { 
   RunState, NeededInput, ProvidedInput, NodeStatuses,
   Transcript, FileRef,
-  NodeId, Node, Graph, 
+  NodeId, Node, Edge, Graph, 
 } from './types';
 import { Activities, NodeStepResult } from './activities';
 import { zodFromSchema } from './json-schema-to-zod';
@@ -72,6 +72,7 @@ export async function runGraphWorkflow({
   type RunNodeInput = {
     node: Node;
     inputs: Record<string, any>;
+    outgoing: Array<Edge>;
     state: RunState;
   };
     
@@ -86,6 +87,7 @@ export async function runGraphWorkflow({
         prompt: input.state.prompt, 
         node: input.node, 
         inputs: input.inputs,
+        outgoing: input.outgoing,
         files: input.state.files,
       });
 
@@ -148,6 +150,17 @@ export async function runGraphWorkflow({
                   throw error;
                 }
               }
+
+              // If the node is a router, and the tool call is for a route, mark the skipped routes as 'skipped'
+              const routes = (toolCall.input as any).routes || [(toolCall.input as any).route].filter(Boolean)
+              if (routes.length) {
+                for (const outgoing of input.outgoing) {
+                  if (!routes.includes(outgoing.to)) {
+                    state.status[outgoing.to] = 'skipped';
+                  }
+                }
+              }
+
               // Output resolution is handled by setting `resultObject` —— not tool call
               resultObject = Object.assign(resultObject || {}, toolCall.input);
               toolResult = {
@@ -186,20 +199,36 @@ export async function runGraphWorkflow({
     return resultObject;
   }
 
+  const SKIPPED = Symbol('skipped');
+  async function skipNode(input: RunNodeInput): Promise<any> {
+    return SKIPPED;
+  }
+
   function runNextWave(resolve: (value: unknown) => void, reject: (reason?: any) => void) {
     while (state.ready.length) {
       const id: NodeId = state.ready.shift()!;
       const node: Node = nodeById[id]!;
-      state.status[id] = 'running';
   
       const inputs: Record<NodeId, any> = Object.fromEntries(
         graph.edges.filter(e => e.to === id).map(e => [e.from, state.outputs[e.from]]) as [NodeId, any][]
       );
-      runNodeWorkflow({ node, inputs, state })
-        .then((output: RunState) => {
-          if (!output) { return reject(new Error('No output from node')); }
-          state.status[id] = 'done';
-          state.outputs[id] = output;
+      const outgoing: Array<Edge> = graph.edges.filter(e => e.from === id);
+
+      const skip: boolean = state.status[id] === 'skipped'
+        || (Object.keys(inputs).length > 0 && Object.keys(inputs).every(k => state.status[k] === 'skipped'));
+      if (!skip) { state.status[id] = 'running'; }
+
+      (skip ? skipNode : runNodeWorkflow)({ node, inputs, outgoing, state })
+        .then((output) => {
+          if (!output) {
+            return reject(new Error('No output from node'));
+          } else if (output === SKIPPED) {
+            state.status[id] = 'skipped';
+          } else {
+            state.status[id] = 'done';
+            state.outputs[id] = output;            
+          }
+
           const deps: NodeId[] = graph.edges.filter(e => e.from === id).map(e => e.to);
           for (const dId of deps) {
             state.pendingIn[dId] -= 1;
@@ -209,7 +238,7 @@ export async function runGraphWorkflow({
           }
           state.ready.sort(); // stable order after each wave
           runNextWave(resolve, reject);
-          if (Object.values(state.status).every(s => s === 'done')) {
+          if (Object.values(state.status).every(s => s === 'done' || s === 'skipped')) {
             resolve(state);
           }
         })

@@ -1,7 +1,7 @@
 import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Worker, WorkerOptions, NativeConnection } from '@temporalio/worker';
 import { Connection } from '@temporalio/client';
-import { GraphWorkflowClient, NeededInput, ProvidedInput, Graph } from '../../src/GraphWorkflowClient';
+import { GraphWorkflowClient, NeededInput, ProvidedInput, Graph, Node, Edge } from '../../src/GraphWorkflowClient';
 import { createActivities } from '../../src/activities';
 import withUserInput from '../../src/models/withUserInput';
 import dotenv from 'dotenv';
@@ -14,7 +14,7 @@ export type TestHarness = {
   shutdown: () => Promise<void>;
 };
 
-export type { NeededInput, ProvidedInput, Graph };
+export type { NeededInput, ProvidedInput, Graph, Node, Edge };
 
 export async function makeHarness(opts: {
   workflowsPath: string;

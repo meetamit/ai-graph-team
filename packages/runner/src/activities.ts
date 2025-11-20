@@ -3,7 +3,7 @@ import {
   generateText, LanguageModel, ImageModel, tool,
   ModelMessage, TextPart, ToolCallPart, ToolResultPart, Tool, 
 } from 'ai';
-import { Node, Transcript, FileRef } from './types';
+import { Node, Edge, Transcript, FileRef } from './types';
 import { evaluateTemplate } from './cel';
 import { getNodeTools, getCallableTools } from './tools';
 
@@ -13,6 +13,7 @@ export type NodeStepInput = {
   runId: string;
   node: Node;
   inputs: Record<string, any>;
+  outgoing: Edge[];
   i: number;
   transcript: Transcript;
   files: Record<string, FileRef>;
