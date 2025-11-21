@@ -73,5 +73,13 @@ export function getCallableTools(ctx: CallableToolContext): Record<string, Tool>
     generateImage: generateImageTool(ctx, opts),
     extractUrlText: extractUrlTextTool(ctx, opts),
   }
+}
 
+// Used by tool factories to configure the schema of a tool based on the node tool config
+export function configureSchema(schema: Record<string, z.ZodType>, opts: NodeToolConfig | undefined): Record<string, z.ZodType> {
+  return Object.fromEntries(
+    Object.entries(schema)
+      .filter(([key]) => !opts?.input?.[key])
+      .map(([key, paramSchema]) => opts?.default?.[key] ? [key, paramSchema.default(opts?.default?.[key])] : [key, paramSchema])
+  )
 }

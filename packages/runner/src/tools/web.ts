@@ -2,17 +2,9 @@ import { tool, Tool } from 'ai';
 import { z } from 'zod';
 import { tavily } from  '@tavily/core';
 import { NodeToolConfig, FileRef } from '../types';
-import { prepareToolInput, type CallableToolContext } from './index';
+import { prepareToolInput, configureSchema, type CallableToolContext } from './index';
 
 const tvly = tavily({ apiKey: "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" });
-
-function configureSchema(schema: Record<string, z.ZodType>, opts: NodeToolConfig | undefined): Record<string, z.ZodType> {
-  return Object.fromEntries(
-    Object.entries(schema)
-      .filter(([key]) => !opts?.input?.[key])
-      .map(([key, paramSchema]) => opts?.default?.[key] ? [key, paramSchema.default(opts?.default?.[key])] : [key, paramSchema])
-  )
-}
 
 export function extractUrlTextTool(ctx: CallableToolContext | undefined, opts: NodeToolConfig | undefined): Tool {
   const def = {
