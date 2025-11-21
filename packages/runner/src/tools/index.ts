@@ -6,6 +6,7 @@ import type { NodeStepInput, ToolCallInput, ActivitiesDependencies } from '../ac
 import { generateImageTool } from './images';
 import { createFileTool, readFileTool } from './files';
 import { resolveOutputTool } from './resolve';
+import { extractUrlTextTool } from './web';
 
 const tools: Record<string, Tool> = {
   collectUserInput: tool({
@@ -42,6 +43,7 @@ export function getNodeTools(ctx: NodeToolContext): Record<string, Tool> {
       toolOpts = typeof toolOpts === 'string' ? { name: toolOpts } : toolOpts
       const nodeTool: Tool | undefined = !toolName ? undefined
         : toolName === 'generateImage' ? generateImageTool(undefined, toolOpts)
+        : toolName === 'extractUrlText'? extractUrlTextTool(undefined, toolOpts)
         : toolName === 'createFile'    ? createFileTool(ctx, toolOpts)
         : toolName === 'readFile'      ? readFileTool(ctx, toolOpts)
         : undefined;
@@ -69,6 +71,7 @@ export function getCallableTools(ctx: CallableToolContext): Record<string, Tool>
   return {
     ...tools,
     generateImage: generateImageTool(ctx, opts),
+    extractUrlText: extractUrlTextTool(ctx, opts),
   }
 
 }

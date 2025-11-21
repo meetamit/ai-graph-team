@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { PlusIcon, XIcon, TextCursorInputIcon, FilePenLineIcon, FileOutputIcon, ImagePlusIcon, EditIcon } from "lucide-react";
+import { PlusIcon, XIcon, TextCursorInputIcon, FilePenLineIcon, FileOutputIcon, ImagePlusIcon, EditIcon, GlobeIcon } from "lucide-react";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import ToolEditorModal from "./tool-editor-modal";
@@ -17,6 +17,7 @@ const AVAILABLE_TOOLS = [
   { id: "generateImage", label: "Generate Image", icon: ImagePlusIcon },
   { id: "writeFile", label: "Write File", icon: FilePenLineIcon },
   { id: "readFile", label: "Read File", icon: FileOutputIcon },
+  { id: "extractUrlText", label: "Extract URL Text", icon: GlobeIcon },
 ];
 
 const getToolName = (tool: string | NodeToolConfig): string => {
