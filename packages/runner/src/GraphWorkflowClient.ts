@@ -19,8 +19,6 @@ export type GraphWorkflowRunOptions = {
   graph: Graph;
   prompt?: any;
   workflowId?: string;
-  model?: string;
-  imageModel?: string;
   fromNode?: NodeId;
   initial?: {
     runId: string;
@@ -29,6 +27,8 @@ export type GraphWorkflowRunOptions = {
     transcripts: Array<[NodeId, Transcript]>;
     files: Record<string, FileRef>;
   };
+  modelKind?: string;
+  imageModelKind?: string;
 };
 
 export type GraphWorkflowClientOptions = {
@@ -64,13 +64,13 @@ export class GraphWorkflowClient {
   }
 
   async startWorkflow(options: GraphWorkflowRunOptions): Promise<{ description: { runId: string }; handle: WorkflowHandle }> {
-    const { graph, prompt, workflowId, fromNode, initial, model, imageModel } = options;
+    const { graph, prompt, workflowId, fromNode, initial, modelKind, imageModelKind } = options;
     const client = await this.getClient();
 
     try {
       const handle: WorkflowHandle = await client.workflow.start(runGraphWorkflow, {
         args: [{
-          graph, prompt, fromNode, model, imageModel,
+          graph, prompt, fromNode, modelKind, imageModelKind,
           initial: initial ? { pendingIn: {}, ready: [], ...initial } : undefined,
         }],
         taskQueue: this.taskQueue,

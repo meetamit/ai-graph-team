@@ -3,7 +3,7 @@ import {
   generateText, LanguageModel, ImageModel, tool,
   ModelMessage, TextPart, ToolCallPart, ToolResultPart, Tool, 
 } from 'ai';
-import { Node, Edge, Transcript, FileRef } from './types';
+import { Node, NodeModelConfig, Edge, Transcript, FileRef } from './types';
 import { evaluateTemplate } from './cel';
 import { getNodeTools, getCallableTools } from './tools';
 
@@ -18,8 +18,8 @@ export type NodeStepInput = {
   transcript: Transcript;
   files: Record<string, FileRef>;
   prompt: any;
-  model?: string;
-  imageModel?: string;
+  modelKind?: string;
+  imageModelKind?: string;
 }
 
 export type NodeStepResult = {
@@ -33,8 +33,8 @@ export type ToolCallInput = {
   toolCall: ToolCallPart;
   node: Node;
   inputs: Record<string, any>;
-  model?: string;
-  imageModel?: string;
+  modelKind?: string;
+  imageModelKind?: string;
 }
 
 export type ToolCallResult = {
@@ -52,7 +52,7 @@ export type ActivitiesDependencies = {
   toolCallImpl?: (toolCall: ToolCallInput) => Promise<ToolCallResult>;
   model?: LanguageModel | ModelWithArgs | 
           ((name: string, input?: NodeStepInput) => LanguageModel | ModelWithArgs);
-  imageModel?: ImageModel | ((name: string) => ImageModel);
+  imageModel?: ImageModel | ((name: string, model: string | NodeModelConfig) => ImageModel);
 };
 
 export function createActivities(deps: ActivitiesDependencies = {}) {
@@ -64,7 +64,7 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
     try {
       // Prep the model and generation args
       const configuredModel: LanguageModel | ModelWithArgs | undefined = typeof deps.model === 'function' 
-        ? deps.model(input.model || 'ai', input) 
+        ? deps.model(input.modelKind || 'ai', input) 
         : deps.model;
       let model: LanguageModel | undefined;
       let generationArgs: Record<string, any> = {};

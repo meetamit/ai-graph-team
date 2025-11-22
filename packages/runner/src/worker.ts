@@ -1,8 +1,7 @@
 
 import { Worker, NativeConnection } from '@temporalio/worker';
 import { LanguageModel } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { llm, simple, withUserInput, withImageGen, testImageGenModel } from './models';
+import { llm, diffusionModel, simple, withUserInput, withImageGen, testImageGenModel, type NodeModelConfig } from './models';
 import { createActivities, NodeStepInput, ModelWithArgs } from './activities';
 import dotenv from 'dotenv';
 dotenv.config({quiet: true});
@@ -23,10 +22,10 @@ async function run() {
     }
   }
 
-  const imageModel = (kind: string) => {
+  const imageModel = (kind: string, model: string | NodeModelConfig) => {
     switch (kind) {
       case 'test': return testImageGenModel();
-      case 'ai':   return openai.image('dall-e-3');
+      case 'ai':   return diffusionModel(model);
       default:     throw new Error(`Unknown image model: ${kind}`);
     }
   }

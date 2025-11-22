@@ -137,4 +137,36 @@ export const anthropicModels: Model[] = [
 );
 
 // Master list of all supported models
-export const supportedModels = [...openaiModels, ...anthropicModels];
+export const supportedModels: Model[] = [...openaiModels, ...anthropicModels];
+
+// Image models
+export type ImageProvider = 'stable-diffusion-webui' | 'openai';
+
+export type ImageModel = {
+  name: string;
+  provider: ImageProvider;
+  category: string;
+  comment: string;
+}
+
+export const openaiImageModels: ImageModel[] = [
+  {
+    name: 'dall-e-3',
+    provider: 'openai',
+    category: 'OpenAI Image Generation',
+    comment: 'DALL-E 3',
+  },
+];
+
+export const stableDiffusionWebuiImageModels: ImageModel[] = [
+  {
+    name: 'stable-diffusion-2-free',
+    provider: 'stable-diffusion-webui',
+    category: 'Local Image Generation',
+    comment: 'Stable Diffusion v2 — Free',
+  },
+];
+
+export function hasModel(models: { name: string }[], modelName: string): boolean {
+  return models.some(m => m.name === modelName);
+} 

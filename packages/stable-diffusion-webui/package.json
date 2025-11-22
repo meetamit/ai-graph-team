@@ -1,0 +1,8 @@
+{
+  "name": "@ai-graph-team/stable-diffusion-webui",
+  "version": "0.0.1",
+  "main": "index.ts",
+  "peerDependencies": {
+    "ai": "^5.1.0-beta.14"
+  }
+}

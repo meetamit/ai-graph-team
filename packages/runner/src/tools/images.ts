@@ -24,7 +24,7 @@ export function generateImageTool(ctx: CallableToolContext | undefined, opts: No
     execute: async (input) => {
       const { prompt, filename, size, style, quality } = prepareToolInput(input, opts, ctx);
       const imageModel = typeof ctx.dependencies.imageModel === 'function' 
-        ? ctx.dependencies.imageModel(ctx.input.imageModel || 'ai') 
+        ? ctx.dependencies.imageModel(ctx.input.imageModelKind || 'ai') 
         : ctx.dependencies.imageModel;
       if (!imageModel) {
         throw new Error(`Could not resolve image model for node ${ctx.input.node.id}`);
