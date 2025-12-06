@@ -11,7 +11,7 @@ import debatePanel from './fixtures/graphs/debatePanel.json' with { type: 'json'
 const workflowsPath = fileURLToPath(new URL('../src/workflows.ts', import.meta.url));
 
 describe('Graph workflow', () => {
-  const taskQueue = 'test-graph-queue';
+  const taskQueue = 'test-run-graph-queue';
   const idBase = 'test-run-graph-';
 
   let h: TestHarness;

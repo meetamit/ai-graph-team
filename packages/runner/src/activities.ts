@@ -5,7 +5,7 @@ import {
 } from 'ai';
 import { Node, NodeModelConfig, Edge, Transcript, FileRef } from './types';
 import { evaluateTemplate } from './cel';
-import { getNodeTools, getCallableTools } from './tools';
+import { getNodeTools, getNodeTool } from './tools';
 
 export type Activities = ReturnType<typeof createActivities>;
 
@@ -178,19 +178,12 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
 
   async function makeToolCall(input: ToolCallInput): Promise<ToolCallResult> {
     if (deps.toolCallImpl) { return await deps.toolCallImpl(input); }
-
     const files: FileRef[] = []; // Keep track of files created during this step
-
-    // Clone the tools object and add input-specific execute function
-    const callableTools = getCallableTools({ input, files, dependencies: deps });
-
-
-    // Call the tool
     const toolName = input.toolCall.toolName;
-    const toolDef: Tool = callableTools[toolName];
+    const toolDef: Tool | undefined = getNodeTool(toolName, { input, files, dependencies: deps });
     let value: any;
     if (toolDef && toolDef.execute) {
-      value = await (toolDef.execute as any)(input.toolCall.input);
+      value = await (toolDef.execute as any)(input.toolCall.input); // Call the tool
     }
     if (!value) {
       throw new Error(`Unimplemented tool call "${input.toolCall.toolName}"`);

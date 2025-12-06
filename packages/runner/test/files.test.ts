@@ -32,7 +32,7 @@ describe('File tools', () => {
                   content: [{
                     type: 'tool-call',
                     toolCallId: `call_by_${nodeId}`,
-                    toolName: 'createFile',
+                    toolName: 'writeFile',
                     input: JSON.stringify({ filename: `test_${nodeId}.txt`, content: `Hello, world! ${nodeId}` }) 
                   }],
                 };
@@ -65,7 +65,7 @@ describe('File tools', () => {
         properties: { id: { type: "string" }, uri: { type: "string" }, filename: { type: "string" } },
         required: ["id", "uri", "filename"],
       },
-      tools: ['createFile'],
+      tools: ['writeFile'],
     };
     const graph: Graph = {
       nodes: [

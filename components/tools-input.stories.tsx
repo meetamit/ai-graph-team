@@ -1,9 +1,18 @@
+import { useState, type ComponentType } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import ToolsInput from './tools-input';
+import ToolsInput, { type ToolsInputProps } from './tools-input';
+import { supportedTools } from '@ai-graph-team/llm-tools';
+
+function withToolsState(Component: ComponentType<ToolsInputProps>): ComponentType<ToolsInputProps> {
+  return function WithToolsState(props: ToolsInputProps) {
+    const [tools, setTools] = useState(props.tools);
+    return <Component {...props} tools={tools} onChange={setTools} />;
+  };
+}
 
 const meta = {
   title: 'Graph/ToolsInput',
-  component: ToolsInput,
+  component: withToolsState(ToolsInput),
   parameters: {
     layout: 'padded',
   },
@@ -12,6 +21,7 @@ const meta = {
     onChange: (tools) => console.log('onChange', tools),
   },
 } satisfies Meta<typeof ToolsInput>;
+
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -24,10 +34,7 @@ export const Empty: Story = {
 
 export const SimpleTools: Story = {
   args: {
-    tools: [
-      'collectUserInput',
-      'generateImage',
-    ],
+    tools: ['collectUserInput', 'generateImage', ],
   },
 };
 
@@ -36,52 +43,24 @@ export const ConfiguredTools: Story = {
     tools: [
       {
         name: 'readFile',
-        input: {
-          fileId: '{{inputs.file_creator.data.id}}',
+        config: {
+          fileId: { value: '{{inputs.file_creator.data.id}}' },
         },
       },
       {
         name: 'writeFile',
-        input: {
-          filename: 'output.txt',
-        },
-        default: {
-          content: 'Default content',
+        config: {
+          filename: { value: 'output.txt' },
+          content: { default: 'Default content' },
         },
       },
-    ],
-  },
-};
-
-export const MixedTools: Story = {
-  args: {
-    tools: [
-      'collectUserInput',
-      {
-        name: 'readFile',
-        input: {
-          fileId: '{{inputs.file_creator.data.id}}',
-        },
-      },
-      {
-        name: 'writeFile',
-        input: {
-          filename: 'summary.txt',
-        },
-      },
-      'generateImage',
     ],
   },
 };
 
 export const AllTools: Story = {
   args: {
-    tools: [
-      'collectUserInput',
-      'generateImage',
-      'writeFile',
-      'readFile',
-    ],
+    tools: supportedTools.map(tool => tool.id),
   },
 };
 

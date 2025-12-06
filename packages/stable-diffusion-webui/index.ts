@@ -1,7 +1,7 @@
 import { customProvider, ImageModel } from 'ai';
 
 export function stableDiffusionWebuiProvider({ baseURL }: { baseURL: string } = {
-  baseURL: 'http://localhost:7861',
+  baseURL: 'http://localhost:7860',
 }) {
   const modelId = 'stable-diffusion-2-free';
   const provider = modelId;

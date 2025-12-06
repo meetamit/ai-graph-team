@@ -11,7 +11,7 @@ import testImageGenModel from '../src/models/testImageGenModel';
 const workflowsPath = fileURLToPath(new URL('../src/workflows.ts', import.meta.url));
 
 describe('Graph models', () => {
-  const taskQueue = 'test-graph-queue';
+  const taskQueue = 'test-run-models-queue';
   const idBase = 'test-run-models-';
 
   let h: TestHarness;

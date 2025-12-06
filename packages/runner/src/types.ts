@@ -6,8 +6,12 @@ export type NodeType = 'input' | 'llm' | 'router';
 export type NodeToolConfig = {
   name: string;
   description?: string; // optional description to override the tool's default description
-  input?: Record<string, any>; // optional, fixed input values that the LLM won't even have to think about
-  default?: Record<string, any>; // optional, default value to use; side effect of encouraging the LLM to use that value or tool
+  config?: Record<string, {
+    value?: any;// optional, given (essentially hard-coded) input value that the LLM won't even have to think about
+    default?: any; // optional, default value to use; side effect of encouraging the LLM to use that value or tool
+    description?: string; // optional, description to override the tool's default description
+    mode?: 'Given' | 'Prompted'; // optional, mode to use for the input
+  }>;
 };
 
 export type NodeModelConfig = {

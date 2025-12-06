@@ -1,42 +1,36 @@
-import { z } from 'zod';
+import { z, toJSONSchema } from 'zod';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { tool, Tool, experimental_generateImage as generateImage, ImageModel } from 'ai';
 import { NodeToolConfig, FileRef } from '../types';
-import { prepareToolInput, configureSchema, type CallableToolContext } from './index';
+import { supportedToolsById } from '@ai-graph-team/llm-tools';
+import { prepareToolInput, buildLLMToolDef, type CallableToolContext } from './index';
 
 export function generateImageTool(ctx: CallableToolContext | undefined, opts: NodeToolConfig | undefined): Tool {
-  const def = {
-    description: 'Generate an image using AI based on a text prompt',
-    inputSchema: z.object(configureSchema({
-      prompt: z.string().describe('A detailed description of the image to generate'),
-      filename: z.string().describe('The user-facing name of the image file').default('generated-image.png'),
-      size: z.string().describe('The size of the generated image').default('1024x1024'),
-      style: z.enum(['vivid', 'natural']).describe('The style of the image: vivid (hyper-real and dramatic) or natural (more natural, less hyper-real)').default('vivid'),
-      quality: z.enum(['standard', 'hd']).describe('The quality of the image').default('standard'),
-    }, opts))
-  };
+  const def = buildLLMToolDef(supportedToolsById.generateImage, opts);
   if (!ctx) { return tool(def); }
-  
   return tool({
     ...def,
-    execute: async (input) => {
-      const { prompt, filename, size, style, quality } = prepareToolInput(input, opts, ctx);
-      const imageModel = typeof ctx.dependencies.imageModel === 'function' 
-        ? ctx.dependencies.imageModel(ctx.input.imageModelKind || 'ai') 
-        : ctx.dependencies.imageModel;
-      if (!imageModel) {
-        throw new Error(`Could not resolve image model for node ${ctx.input.node.id}`);
+    execute: async (args) => {
+      const { dependencies, input } = ctx;
+      const { prompt, filename, size, style, quality, model: modelName } = prepareToolInput(args, opts, ctx);
+
+      const model: ImageModel | undefined = typeof dependencies.imageModel === 'function' 
+        ? dependencies.imageModel(input.imageModelKind || 'ai', modelName || 'stable-diffusion-2-free') 
+        : dependencies.imageModel;
+      if (!model) {
+        throw new Error(`Could not resolve image model for node ${input.node.id}`);
       }
-      
+
       const fileRef = await generateAndSaveImage(
-        ctx.input.runId,
-        ctx.input.node.id,
+        input.runId,
+        input.node.id,
         prompt,
         filename,
-        { model: imageModel, size, style, quality }
+        { model, size, style, quality }
       );  
+
       ctx.files.push(fileRef);
       return fileRef;
     }

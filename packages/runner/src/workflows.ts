@@ -6,7 +6,7 @@ import {
   NodeId, Node, Edge, Graph, 
 } from './types';
 import { Activities, NodeStepResult } from './activities';
-import { zodFromSchema } from './json-schema-to-zod';
+import { zodFromSchema } from '@ai-graph-team/llm-tools';
 import { messagesToolCalls, messagesToolResults, initRunState } from './utils';
 
 const { makeToolCall, takeNodeFirstStep, takeNodeFollowupStep } = proxyActivities<Activities>({
@@ -106,7 +106,8 @@ export async function runGraphWorkflow({
       }
       // If the step is resolved via tool calls (ATM it's the only expect way to resolve), extract the results
       else if (stepResult.finishReason === 'tool-calls') {
-        // Some tools (like createFile) are auto-called in the node step, so we need to discover them to determine which tool calls are actionable here.
+        // Some tools (like createFile) are auto-called in the node step and therefore will have been called already.
+        // So we need to discover them to determine which tool calls are still actionable here.
         const autoResults: ToolResultPart[] = messagesToolResults(stepResult.messages)
 
         const toolCalls: ToolCallPart[] = messagesToolCalls(stepResult.messages)

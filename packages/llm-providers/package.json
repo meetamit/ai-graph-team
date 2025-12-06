@@ -1,6 +1,6 @@
 {
   "name": "@ai-graph-team/llm-providers",
   "version": "0.0.1",
-  "main": "src/index.ts",
+  "main": "index.ts",
   "scripts": {}
 }

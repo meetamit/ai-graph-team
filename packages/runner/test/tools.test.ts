@@ -3,7 +3,7 @@ import { describe, it, expect } from '@jest/globals';
 import sinon from 'sinon';
 import { ToolCallPart } from 'ai';
 import { MockLanguageModelV3, } from 'ai/test';
-import { makeHarness, TestHarness, Graph } from './helpers/testEnv';
+import { makeHarness, TestHarness, Graph, Node } from './helpers/testEnv';
 import { createActivities } from '../src/activities';
 import { messagesToolCalls } from '../src/utils';
 import { fixtureFromSchema } from '../src/models/utils';
@@ -13,7 +13,7 @@ import testImageGenModel from '../src/models/testImageGenModel';
 const workflowsPath = fileURLToPath(new URL('../src/workflows.ts', import.meta.url));
 
 describe('Graph tools', () => {
-  const taskQueue = 'test-graph-queue';
+  const taskQueue = 'test-run-tools-queue';
   const idBase = 'test-run-tools-';
 
   let h: TestHarness;
@@ -66,53 +66,57 @@ describe('Graph tools', () => {
         {
           id: 'user_input',
           type: 'input',
+          name: 'User Input',
         },
         {
           id: 'image_generator',
           type: 'llm',
+          name: 'Image Generator',
           tools: ['generateImage'],
         },
         {
           id: 'weird_generator',
           type: 'llm',
+          name: 'Weird Generator',
           tools: [{
-            name: 'generateImage', 
-            input: {
-              filename: 'weird.bmp', 
-              size: '32x32', 
-              quality: 'hd'
+            name: 'generateImage',
+            config: {
+              model: { value: 'dall-e-3' },
+              filename: { value: 'weird.bmp' },
+              size: { value: '32x32' },
+              quality: { value: 'hd' },
+              prompt: { default: 'Make it weird' },
+              style: { default: 'natural' },
             },
-            default: {
-              prompt: 'Make it weird',
-              style: 'natural',
-            }
           }],
         },
         {
           id: 'file_creator',
           type: 'llm',
-          tools: ['createFile'],
+          name: 'File Creator',
+          tools: ['writeFile'],
         },
         {
           id: 'summary',
           type: 'llm',
+          name: 'Summary',
           tools: [
             'collectUserInput',
             {
               name: 'readFile',
-              input: {
-                fileId: '{{inputs.file_creator.data.id}}',
+              config: {
+                fileId: { value: '{{inputs.file_creator.data.id}}' },
               },
             },
             {
-              name: 'createFile',
-              input: {
-                filename: 'summary.txt',
+              name: 'writeFile',
+              config: {
+                filename: { value: 'summary.txt' },
               },
             }
           ],
         }
-      ],
+      ] as Node[],
       edges: [
         { from: 'user_input', to: 'image_generator' },
         { from: 'user_input', to: 'file_creator' },
@@ -162,22 +166,18 @@ describe('Graph tools', () => {
               size: {
                 type: "string",
                 description: "The size of the generated image",
-                default: "1024x1024",
+                default: "512x512",
+                enum: ["256x256", "512x512", "1024x1024"],
               },
-              style: {
-                type: "string",
-                enum: ["vivid", "natural"],
-                description: "The style of the image: vivid (hyper-real and dramatic) or natural (more natural, less hyper-real)",
-                default: "vivid",
-              },
-              quality: {
-                type: "string",
-                enum: ["standard", "hd"],
-                description: "The quality of the image",
-                default: "standard",
+              steps: {
+                type: "integer",
+                description: "The number of steps to generate the image",
+                default: 20,
+                minimum: 5,
+                maximum: 200,
               },
             },
-            required: ["prompt", "filename", "size", "style", "quality"],
+            required: ["prompt", "filename", "size", "steps"],
           })
         }));
       }
@@ -204,8 +204,8 @@ describe('Graph tools', () => {
         }));
       }
       else if (nodeId === 'file_creator') {
-        expectTools(tools, ['createFile', 'resolveOutput']);
-        expectTool(tools, 'createFile', expect.objectContaining({
+        expectTools(tools, ['writeFile', 'resolveOutput']);
+        expectTool(tools, 'writeFile', expect.objectContaining({
           inputSchema: expect.objectContaining({
             type: "object",
             properties: {
@@ -227,8 +227,8 @@ describe('Graph tools', () => {
           })
         }));
       } else if (nodeId === 'summary') {
-        expectTools(tools, ['readFile', 'createFile', 'collectUserInput', 'resolveOutput']);
-        expectTool(tools, 'createFile', expect.objectContaining({
+        expectTools(tools, ['readFile', 'writeFile', 'collectUserInput', 'resolveOutput']);
+        expectTool(tools, 'writeFile', expect.objectContaining({
           inputSchema: expect.objectContaining({
             type: "object",
             properties: {

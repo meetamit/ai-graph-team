@@ -27,15 +27,15 @@ export const populatedNode: Node = {
     'collectUserInput',
     {
       name: 'readFile',
-      input: {
-        fileId: '{{inputs.file_creator.data.id}}',
-      },
+      config: {
+        fileId: { value: '{{inputs.file_creator.data.id}}' }
+      }
     },
     {
-      name: 'createFile',
-      input: {
-        filename: 'summary.txt',
-      },
+      name: 'writeFile',
+      config: {
+        filename: { value: 'summary.txt' },
+      }
     }
   ],
   output_schema: {

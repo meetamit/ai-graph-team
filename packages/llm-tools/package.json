@@ -1,0 +1,11 @@
+{
+  "name": "@ai-graph-team/llm-tools",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "scripts": {},
+  "dependencies": {
+    "@ai-graph-team/llm-providers": "^0.0.1",
+    "json-schema": "^0.4.0",
+    "zod": "^4.1.12"
+  }
+}

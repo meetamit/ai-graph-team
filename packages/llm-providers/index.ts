@@ -167,6 +167,8 @@ export const stableDiffusionWebuiImageModels: ImageModel[] = [
   },
 ];
 
+export const supportedImageModels: ImageModel[] = [...openaiImageModels, ...stableDiffusionWebuiImageModels];
+
 export function hasModel(models: { name: string }[], modelName: string): boolean {
   return models.some(m => m.name === modelName);
 } 
