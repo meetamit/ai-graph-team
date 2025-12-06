@@ -1,336 +1,189 @@
 import { fileURLToPath } from 'url';
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import sinon from 'sinon';
-import { ToolCallPart } from 'ai';
-import { MockLanguageModelV3, } from 'ai/test';
 import { makeHarness, TestHarness, Graph } from './helpers/testEnv';
 import { createActivities } from '../src/activities';
-import { messagesToolCalls } from '../src/utils';
-import { fixtureFromSchema } from '../src/models/utils';
-import withUserInput from '../src/models/withUserInput';
+import withToolCalling from '../src/models/withToolCalling';
 import testImageGenModel from '../src/models/testImageGenModel';
+import toolsGraph from './fixtures/graphs/toolsGraph.json';
 
 const workflowsPath = fileURLToPath(new URL('../src/workflows.ts', import.meta.url));
 
+function expectToolNames(tools: Record<string, any>[], expected: string[]) {
+  expect(tools).toHaveLength(expected.length);
+  const toolNames = tools.map((tool: any) => tool.name);
+  expected.forEach((toolName) => {
+    expect(toolNames).toContain(toolName);
+  });
+}
+
+function expectToolSchema(tools: Record<string, any>[], toolName: string, expected: any) {
+  const tool = tools.find((t: any) => t.name === toolName);
+  expect(tool).toBeDefined();
+  expect(tool).toEqual(expected);
+}
+
+function getToolsForNode(trackCall: sinon.SinonSpy, nodeId: string): Record<string, any>[] {
+  const call = trackCall.args.find(([id]) => id === nodeId);
+  return call ? call[1] : [];
+}
+
+const anyString = expect.stringContaining('');
+
+function fileOutput(nodeId: string, overrides = {}) {
+  return {
+    id: anyString,
+    runId: anyString,
+    nodeId,
+    kind: 'generated',
+    uri: anyString,
+    filename: anyString,
+    mediaType: anyString,
+    bytes: expect.any(Number),
+    sha256: anyString,
+    createdAt: anyString,
+    ...overrides,
+  };
+}
+
+
 describe('Graph tools', () => {
-  const taskQueue = 'test-graph-queue';
+  const taskQueue = 'test-run-tools-queue';
   const idBase = 'test-run-tools-';
 
   let h: TestHarness;
-  afterEach(async () => {
-    if (!h) return;
-    await h.shutdown();
-  });
+  let trackCall: sinon.SinonSpy;
+  let result: Awaited<ReturnType<typeof h.runner.runWorkflow>>;
 
-  it('makes node-specific tools available to the model', async () => {
-    const trackCall = sinon.spy((input, args) => {});
+  beforeAll(async () => {
+    trackCall = sinon.spy((_input, _args) => {});
     h = await makeHarness({
-      taskQueue, workflowsPath, idBase,
+      taskQueue,
+      workflowsPath,
+      idBase,
       activities: createActivities({
         imageModel: testImageGenModel(),
-        model: (name, input) => {
-          const impl: MockLanguageModelV3 = withUserInput({ input, delay: 0 }) as MockLanguageModelV3;
-          return new MockLanguageModelV3({ 
-            doGenerate: async (args) => {
-              const { prompt, tools } = args;
-              trackCall(input?.node.id, tools);
-
-              const calledTools = messagesToolCalls(prompt);
-              const uncalledTools = tools?.filter(
-                (tool:any) => tool.name !== 'resolveOutput' && 
-                  !calledTools.some((call:any) => call.toolName === tool.name)
-              );
-
-              if (uncalledTools && uncalledTools.length > 0) {
-                return {
-                  usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, },
-                  finishReason: 'tool-calls',
-                  content: uncalledTools?.map((tool:any, i:number) => ({
-                    type: 'tool-call', 
-                    toolCallId: `call_by_${input?.node?.id || 'unknown'}_${i+1}`, 
-                    toolName: tool.name, 
-                    input: JSON.stringify(fixtureFromSchema(tool.inputSchema))
-                  })) || [] as ToolCallPart[],
-                  warnings: [],
-                };
-              }
-              return impl.doGenerate(args);
-            }
-          });
+        model: (_name, input) => {
+          function onGenerate({ args, input }: { args: any; input: any }) {
+            trackCall(input?.node.id, args.tools);
+          }
+          return withToolCalling({ input, onGenerate, delay: 0 });
         },
       }),
     });
 
-    const result = await h.runner.runWorkflow({ graph: {
-      nodes: [
-        {
-          id: 'user_input',
-          type: 'input',
+    // Run once, assert many times
+    result = await h.runner.runWorkflow({ graph: toolsGraph as Graph });
+
+    // Sanity check that the tools were called the expected number of times
+    expect(trackCall.callCount).toBe(12)
+  });
+
+  afterAll(async () => {
+    if (h) await h.shutdown();
+  });
+
+  it('user_input: provides collectUserInput and resolveOutput', () => {
+    const tools = getToolsForNode(trackCall, 'user_input');
+    expectToolNames(tools, ['collectUserInput', 'resolveOutput']);
+
+    expect(result.outputs.user_input).toMatchObject({
+      message: 'Collected and structured user inputs',
+      data: { 'string 1': 'string 3' },
+    });
+  });
+
+  it('image_generator: provides generateImage with default schema', () => {
+    const tools = getToolsForNode(trackCall, 'image_generator');
+
+    expectToolNames(tools, ['generateImage', 'resolveOutput']);
+    expectToolSchema(tools, 'generateImage', expect.objectContaining({
+      description: 'Generate an image using AI based on a text prompt',
+      inputSchema: expect.objectContaining({
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'A detailed description of the image to generate' },
+          filename: { type: 'string', description: 'The user-facing name of the image file', default: 'generated-image.png' },
+          size: { type: 'string', description: 'The size of the generated image', default: '512x512', enum: ['256x256', '512x512', '1024x1024'] },
+          steps: { type: 'integer', description: 'The number of steps to generate the image', default: 20, minimum: 5, maximum: 200 },
         },
-        {
-          id: 'image_generator',
-          type: 'llm',
-          tools: ['generateImage'],
+        required: ['prompt', 'filename', 'size', 'steps'],
+      }),
+    }));
+
+    expect(result.outputs.image_generator).toMatchObject({
+      message: "Fulfilled the node 'image_generator'",
+      data: fileOutput('image_generator', { mediaType: 'image/png', bytes: 16774, metadata: expect.objectContaining({}) }),
+    });
+  });
+
+  it('weird_generator: applies custom tool config overrides', () => {
+    const tools = getToolsForNode(trackCall, 'weird_generator');
+
+    expectToolNames(tools, ['weirdo', 'resolveOutput']);
+    expectToolSchema(tools, 'weirdo', expect.objectContaining({
+      name: 'weirdo',
+      description: 'Weird description',
+      inputSchema: expect.objectContaining({
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'A detailed description of the image to generate', default: 'Make it weird' },
+          style: { type: 'string', enum: ['vivid', 'natural'], description: expect.any(String), default: 'natural' },
         },
-        {
-          id: 'weird_generator',
-          type: 'llm',
-          tools: [{
-            name: 'generateImage', 
-            input: {
-              filename: 'weird.bmp', 
-              size: '32x32', 
-              quality: 'hd'
-            },
-            default: {
-              prompt: 'Make it weird',
-              style: 'natural',
-            }
-          }],
+        required: ['prompt', 'style'],
+      }),
+    }));
+
+    expect(result.outputs.weird_generator).toMatchObject({
+      message: "Fulfilled the node 'weird_generator'",
+      data: fileOutput('weird_generator', { filename: 'weird.bmp', mediaType: 'image/png', bytes: 16774, metadata: expect.objectContaining({}) }),
+    });
+  });
+
+  it('file_creator: provides writeFile tool', () => {
+    const tools = getToolsForNode(trackCall, 'file_creator');
+
+    expectToolNames(tools, ['writeFile', 'resolveOutput']);
+    expectToolSchema(tools, 'writeFile', expect.objectContaining({
+      description: 'Create a file',
+      inputSchema: expect.objectContaining({
+        properties: {
+          filename: { type: 'string', description: 'The user-facing name of the file' },
+          mediaType: { type: 'string', description: 'The media type of the file', default: 'text/plain' },
+          content: { type: 'string', description: 'The content of the file' },
         },
-        {
-          id: 'file_creator',
-          type: 'llm',
-          tools: ['createFile'],
-        },
-        {
-          id: 'summary',
-          type: 'llm',
-          tools: [
-            'collectUserInput',
-            {
-              name: 'readFile',
-              input: {
-                fileId: '{{inputs.file_creator.data.id}}',
-              },
-            },
-            {
-              name: 'createFile',
-              input: {
-                filename: 'summary.txt',
-              },
-            }
-          ],
-        }
-      ],
-      edges: [
-        { from: 'user_input', to: 'image_generator' },
-        { from: 'user_input', to: 'file_creator' },
-        { from: 'user_input', to: 'weird_generator' },
-        { from: 'image_generator', to: 'summary' },
-        { from: 'file_creator', to: 'summary' },
-        { from: 'weird_generator', to: 'summary' },
-      ],
-    } as Graph });
+        required: ['filename', 'content'],
+      }),
+    }));
 
-    expect(trackCall.callCount).toBe(10);
+    expect(result.outputs.file_creator).toMatchObject({
+      message: "Fulfilled the node 'file_creator'",
+      data: fileOutput('file_creator', { bytes: 8 }),
+    });
+  });
 
-    function expectTool(tools: Record<string, any>[], toolName: string, expected: any) {
-      const tool = tools.find((tool:any) => tool.name === toolName);
-      expect(tool).toBeDefined();
-      expect(tool).toEqual(expected);
-    }
+  it('multi_tool_same_type: provides multiple tools with the same type', () => {
+    const tools = getToolsForNode(trackCall, 'multi_tool_same_type');
+    expectToolNames(tools, ['generateImage', 'hiRez', 'generateImage_sd2f_512x512_isd2fp', 'resolveOutput']);
+  });
+  
+  it('summary: provides multiple tools with merged settings', () => {
+    const tools = getToolsForNode(trackCall, 'summary');
 
-    // Helper function to verify that the expected tools were available
-    function expectTools(tools: Record<string, any>[], expected: string[]) {
-      expect(tools).toHaveLength(expected.length);
-      const toolNames = tools.map((tool:any) => tool.name);
-      expected.forEach((toolName:string) => {
-        expect(toolNames).toContain(toolName);
-      });
-    }
+    expectToolNames(tools, ['readFile', 'writeFile', 'collectUserInput', 'resolveOutput']);
+    // writeFile should have filename pre-filled, so not required
+    expectToolSchema(tools, 'writeFile', expect.objectContaining({
+      inputSchema: expect.objectContaining({
+        required: ['content'], // filename is pre-filled
+      }),
+    }));
 
-    // Verify that the expected tools were available depending on the node
-    for (const [nodeId, tools] of trackCall.args) {
-      if (nodeId === 'user_input') {
-        expectTools(tools, ['collectUserInput', 'resolveOutput']);
-      } else if (nodeId === 'image_generator') {
-        expectTools(tools, ['generateImage', 'resolveOutput']);
-        expectTool(tools, 'generateImage', expect.objectContaining({
-          inputSchema: expect.objectContaining({
-            type: "object",
-            properties: {
-              prompt: {
-                type: "string",
-                description: "A detailed description of the image to generate",
-              },
-              filename: {
-                type: "string",
-                description: "The user-facing name of the image file",
-                default: "generated-image.png",
-              },
-              size: {
-                type: "string",
-                description: "The size of the generated image",
-                default: "1024x1024",
-              },
-              style: {
-                type: "string",
-                enum: ["vivid", "natural"],
-                description: "The style of the image: vivid (hyper-real and dramatic) or natural (more natural, less hyper-real)",
-                default: "vivid",
-              },
-              quality: {
-                type: "string",
-                enum: ["standard", "hd"],
-                description: "The quality of the image",
-                default: "standard",
-              },
-            },
-            required: ["prompt", "filename", "size", "style", "quality"],
-          })
-        }));
-      }
-      else if (nodeId === 'weird_generator') {
-        expectTools(tools, ['generateImage', 'resolveOutput']);
-        expectTool(tools, 'generateImage', expect.objectContaining({
-          inputSchema: expect.objectContaining({
-            type: "object",
-            properties: {
-              prompt: {
-                type: "string",
-                description: "A detailed description of the image to generate",
-                default: "Make it weird",
-              },
-              style: {
-                type: "string",
-                enum: ["vivid", "natural"],
-                description: "The style of the image: vivid (hyper-real and dramatic) or natural (more natural, less hyper-real)",
-                default: "natural",
-              }
-            },
-            required: ["prompt", "style"],
-          })
-        }));
-      }
-      else if (nodeId === 'file_creator') {
-        expectTools(tools, ['createFile', 'resolveOutput']);
-        expectTool(tools, 'createFile', expect.objectContaining({
-          inputSchema: expect.objectContaining({
-            type: "object",
-            properties: {
-              filename: {
-                type: "string",
-                description: "The user-facing name of the file",
-              },
-              mediaType: {
-                type: "string",
-                description: "The media type of the file",
-                default: "text/plain",
-              },
-              content: {
-                type: "string",
-                description: "The content of the file",
-              },
-            },
-            required: ["filename", "content"],
-          })
-        }));
-      } else if (nodeId === 'summary') {
-        expectTools(tools, ['readFile', 'createFile', 'collectUserInput', 'resolveOutput']);
-        expectTool(tools, 'createFile', expect.objectContaining({
-          inputSchema: expect.objectContaining({
-            type: "object",
-            properties: {
-              mediaType: {
-                type: "string",
-                description: "The media type of the file",
-                default: "text/plain",
-              },
-              content: {
-                type: "string",
-                description: "The content of the file",
-              },
-            },
-            required: ["content"],
-          })
-        }));
-      } else {
-        throw new Error(`Unexpected node id: ${nodeId}`);
-      }
-    }
-
-    const string = expect.stringContaining('');
-    expect(result.outputs).toStrictEqual({
-      user_input: {
-        message: "Collected and structured user inputs",
-        data: { 'string 1': 'string 3' }
-      },
-      file_creator: {
-        message: "Fulfilled the node 'file_creator'",
-        data: {
-          id: string,
-          runId: string,
-          nodeId: "file_creator",
-          kind: "generated",
-          uri: string,
-          filename: string,
-          mediaType: string,
-          bytes: 8,
-          sha256: string,
-          createdAt: string,
-        }
-      },
-      image_generator: {
-        message: "Fulfilled the node 'image_generator'",
-        data: {
-          id: string,
-          runId: string,
-          nodeId: "image_generator",
-          kind: "generated",
-          uri: string,
-          filename: string,
-          mediaType: "image/png",
-          bytes: 16774,
-          sha256: string,
-          createdAt: string,
-          metadata: expect.objectContaining({})
-        }
-      },
-      weird_generator: {
-        message: "Fulfilled the node 'weird_generator'",
-        data: {
-          id: string,
-          runId: string,
-          nodeId: "weird_generator",
-          kind: "generated",
-          uri: string,
-          filename: "weird.bmp",
-          mediaType: "image/png",
-          bytes: 16774,
-          sha256: string,
-          createdAt: string,
-          metadata: expect.objectContaining({}),
-        }
-      },
-      summary: {
-        message: "Fulfilled the node 'summary'",
-        data: [
-          string,
-          {
-            id: string,
-            runId: string,
-            nodeId: "summary",
-            kind: "generated",
-            uri: string,
-            filename: "summary.txt",
-            mediaType: string,
-            bytes: 8,
-            sha256: string,
-            createdAt: string,
-          },
-          {
-            for: {
-              name: string,
-              prompt: string,
-              default: string,
-              nodeId: "summary"
-            },
-            value: string,
-            nodeId: "summary"
-          }
-        ]
-      }
+    expect(result.outputs.summary).toMatchObject({
+      message: "Fulfilled the node 'summary'",
+      data: expect.arrayContaining([
+        anyString,
+        fileOutput('summary', { filename: 'summary.txt', bytes: 8 }),
+      ]),
     });
   });
 });

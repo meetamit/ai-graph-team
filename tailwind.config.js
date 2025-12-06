@@ -63,6 +63,18 @@ module.exports = {
           ring: 'hsl(var(--sidebar-ring))',
         },
       },
+      keyframes: {
+        "dialog-shake": {
+          "0%, 100%": { 'margin-left': '0' },
+          "20%": { 'margin-left': '-10px' },
+          "40%": { 'margin-left': '6px' },
+          "60%": { 'margin-left': '-4px' },
+          "80%": { 'margin-left': '2px' },
+        },
+      },
+      animation: {
+        "dialog-shake": "dialog-shake 400ms ease-out",
+      },
     },
   },
   plugins: [require('@tailwindcss/typography')],

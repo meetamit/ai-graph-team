@@ -26,16 +26,16 @@ export const populatedNode: Node = {
   tools: [
     'collectUserInput',
     {
-      name: 'readFile',
-      input: {
-        fileId: '{{inputs.file_creator.data.id}}',
-      },
+      type: 'readFile',
+      settings: {
+        fileId: { value: '{{inputs.file_creator.data.id}}' }
+      }
     },
     {
-      name: 'createFile',
-      input: {
-        filename: 'summary.txt',
-      },
+      type: 'writeFile',
+      settings: {
+        filename: { value: 'summary.txt' },
+      }
     }
   ],
   output_schema: {

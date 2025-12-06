@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@ai-graph-team/llm-providers": "^0.0.1",
+    "@ai-graph-team/llm-tools": "^0.0.1",
     "@ai-graph-team/stable-diffusion-webui": "^0.0.1",
     "@ai-sdk/anthropic": "^2.0.45",
     "@ai-sdk/openai": "^2.1.0-beta.7",

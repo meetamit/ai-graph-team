@@ -23,7 +23,7 @@ export async function makeHarness(opts: {
   idBase?: string;
   collectInput?: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
 }): Promise<TestHarness> {
-  const env = await TestWorkflowEnvironment.createTimeSkipping();
+  const env = await TestWorkflowEnvironment.createLocal();
   const workerOptions: WorkerOptions = {
     taskQueue: opts.taskQueue,
     workflowsPath: opts.workflowsPath,

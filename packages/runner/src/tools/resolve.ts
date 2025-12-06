@@ -1,7 +1,7 @@
 import { tool, Tool } from 'ai';
-import { z, toJSONSchema } from 'zod';
+import { z } from 'zod';
+import { zodFromSchema } from '@ai-graph-team/llm-tools';
 import { Node, Edge, NodeRoutingMode, RouteDef } from '../types';
-import { zodFromSchema } from '../json-schema-to-zod';
 import type { NodeToolContext } from './index';
 
 export function resolveOutputTool(ctx: NodeToolContext): Tool {

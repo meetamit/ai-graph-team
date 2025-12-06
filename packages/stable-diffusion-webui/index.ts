@@ -1,7 +1,7 @@
 import { customProvider, ImageModel } from 'ai';
 
 export function stableDiffusionWebuiProvider({ baseURL }: { baseURL: string } = {
-  baseURL: 'http://localhost:7861',
+  baseURL: 'http://localhost:7860',
 }) {
   const modelId = 'stable-diffusion-2-free';
   const provider = modelId;
@@ -18,8 +18,8 @@ export function stableDiffusionWebuiProvider({ baseURL }: { baseURL: string } = 
         const payload: any = {
           prompt,
           steps: providerOptions?.webui?.steps ?? 15,//100,//20,
-          width: 512, // parseInt(size?.split('x')[0] ?? '512'),
-          height: 512, // parseInt(size?.split('x')[1] ?? '512'),
+          width: parseInt(size?.split('x')[0] ?? '512'),
+          height: parseInt(size?.split('x')[1] ?? '512'),
           seed: seed ?? undefined,
           // add other parameters as needed
         };

@@ -6,7 +6,6 @@ import { IMAGE_GRAPH } from '@/lib/templates/image-generator';
 
 test.describe('graph activity', () => {
   let graphPage: GraphPage;
-
   test.beforeEach(async ({ page }) => {
     graphPage = new GraphPage(page);
   });

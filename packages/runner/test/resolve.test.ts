@@ -86,7 +86,7 @@ const expectedDoneNode = {
 }
 
 describe('Graph node resolution', () => {
-  const taskQueue = 'test-graph-queue';
+  const taskQueue = 'test-run-resolution-queue';
   const idBase = 'test-run-resolution-';
 
   let h: TestHarness;

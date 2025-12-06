@@ -1,5 +1,5 @@
 import { fixtureFromSchema } from '../src/models/utils';
-import { zodFromSchema } from '../src/json-schema-to-zod';
+import { zodFromSchema } from '@ai-graph-team/llm-tools';
 
 describe('Schema utilities', () => {
   describe('fixtureFromSchema + zodFromSchema integration', () => {
@@ -399,7 +399,7 @@ describe('Schema utilities', () => {
         };
 
         const fixture = fixtureFromSchema(schema);
-        const validator = zodFromSchema(schema);
+        const validator = zodFromSchema(schema as any);
         
         // Should not throw - fixture should match one of the schemas
         expect(() => validator.parse(fixture)).not.toThrow();
@@ -470,7 +470,7 @@ describe('Schema utilities', () => {
         };
 
         const fixture = fixtureFromSchema(schema);
-        const validator = zodFromSchema(schema);
+        const validator = zodFromSchema(schema as any);
         
         // Should not throw - fixture should match all schemas
         expect(() => validator.parse(fixture)).not.toThrow();
@@ -520,7 +520,7 @@ describe('Schema utilities', () => {
           ]
         };
 
-        const validator = zodFromSchema(schema);
+        const validator = zodFromSchema(schema as any);
         
         // Missing 'age' property - should fail
         const invalidData = { name: "John" };
@@ -563,7 +563,7 @@ describe('Schema utilities', () => {
         };
 
         const fixture = fixtureFromSchema(schema);
-        const validator = zodFromSchema(schema);
+        const validator = zodFromSchema(schema as any);
         
         // Should not throw - fixture should match at least one schema
         expect(() => validator.parse(fixture)).not.toThrow();
@@ -660,7 +660,7 @@ describe('Schema utilities', () => {
         };
 
         const fixture = fixtureFromSchema(schema);
-        const validator = zodFromSchema(schema);
+        const validator = zodFromSchema(schema as any);
         
         // Should not throw
         expect(() => validator.parse(fixture)).not.toThrow();
@@ -696,7 +696,7 @@ describe('Schema utilities', () => {
         };
 
         const fixture = fixtureFromSchema(schema);
-        const validator = zodFromSchema(schema);
+        const validator = zodFromSchema(schema as any);
         
         // Should not throw
         expect(() => validator.parse(fixture)).not.toThrow();

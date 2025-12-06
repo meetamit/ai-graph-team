@@ -1,63 +1,22 @@
-import { tool, Tool } from 'ai';
+import { tool, Tool as LLMTool } from 'ai';
 import { z } from 'zod';
+import { supportedToolsById as supportedTools } from '@ai-graph-team/llm-tools';
 import { NodeToolConfig, FileRef } from '../types';
-import { evaluateTemplate } from '../cel';
 import type { NodeStepInput, ToolCallInput, ActivitiesDependencies } from '../activities';
 import { generateImageTool } from './images';
-import { createFileTool, readFileTool } from './files';
+import { writeFileTool, readFileTool } from './files';
 import { resolveOutputTool } from './resolve';
 import { extractUrlTextTool } from './web';
 
-const tools: Record<string, Tool> = {
-  collectUserInput: tool({
-    description: 'Prompt the user for an input',
-    inputSchema: z.object({
-      name: z.string().describe('The internal name of the input'),
-      prompt: z.string().describe('The prompt to ask the user for the input'),
-      default: z.string().optional().describe('The default value for the input'),
-    }),
-  }),
-};
+import { evaluateTemplate } from '../cel';
+import { buildToolSettingsSchema, zodFromSchema, type Tool, type ToolSettingsSchema } from '@ai-graph-team/llm-tools';
 
-export function prepareToolInput(input: any, opts: NodeToolConfig | undefined, ctx: NodeToolContext | CallableToolContext): any {
-  const merged = {...input, ...(opts?.input || {})}
-  for (const [key, value] of Object.entries(opts?.input || {})) {
-    if (typeof value === 'string') {
-      merged[key] = evaluateTemplate(value, ctx.input);
-    }
-  }
-  return merged;
-}
+
 
 export type NodeToolContext = {
   input: NodeStepInput;
   files: FileRef[];
 };
-
-// Add node-specific tools to the available tools
-export function getNodeTools(ctx: NodeToolContext): Record<string, Tool> {
-  const { input, files } = ctx;
-  const nodeTools: Record<string, Tool> = (input.node.tools || [])
-    .reduce((nodeTools, toolOpts: string | NodeToolConfig) => {
-      const toolName = typeof toolOpts === 'string' ? toolOpts : toolOpts.name;
-      toolOpts = typeof toolOpts === 'string' ? { name: toolOpts } : toolOpts
-      const nodeTool: Tool | undefined = !toolName ? undefined
-        : toolName === 'generateImage' ? generateImageTool(undefined, toolOpts)
-        : toolName === 'extractUrlText'? extractUrlTextTool(undefined, toolOpts)
-        : toolName === 'createFile'    ? createFileTool(ctx, toolOpts)
-        : toolName === 'readFile'      ? readFileTool(ctx, toolOpts)
-        : undefined;
-      if (nodeTool) { nodeTools[toolName] = nodeTool; }
-      return nodeTools;
-    }, {} as Record<string, Tool>);
-
-  return {
-    ...tools,
-    ...nodeTools,
-    resolveOutput: resolveOutputTool(ctx),
-  };
-}
-
 
 export type CallableToolContext = {
   input: ToolCallInput;
@@ -65,21 +24,111 @@ export type CallableToolContext = {
   dependencies: ActivitiesDependencies;
 };
 
-// Clone the tools object and add input-specific execute function
-export function getCallableTools(ctx: CallableToolContext): Record<string, Tool> {
-  const opts: NodeToolConfig | undefined = ctx.input.node.tools?.find(t => typeof t !== 'string' && t.name === 'generateImage') as NodeToolConfig | undefined;
-  return {
-    ...tools,
-    generateImage: generateImageTool(ctx, opts),
-    extractUrlText: extractUrlTextTool(ctx, opts),
+function formatToolName(config: NodeToolConfig | string, differentiate: boolean = false): string {
+  if (typeof config === 'string') return config;
+  let name = config.type;
+  if (config.name) {
+    name = config.name
+      .split(/\W/).filter(Boolean)
+      .map((s,i) => i === 0 ? s : s.replace(/^./, c => c.toUpperCase()))
+      .join('');
+  } else if (differentiate && config.settings) {
+    name += '_' + Object.values(config.settings)
+      .map(v => v?.value).filter(v => v !== undefined)
+      .map((s: string) => {
+        const t = s.split(/\W/)
+        return t.length === 1 ? t[0] : t.map(c => c.charAt(0)).join('')
+      })
+      .join('_')
+  }
+  return name;
+}
+
+function getConfiguredTool(
+  config: string | NodeToolConfig, 
+  ctx: NodeToolContext | CallableToolContext, 
+  { isNodeStep }: { isNodeStep: boolean } = { isNodeStep: false }
+): LLMTool | undefined {
+  config = typeof config === 'string' ? { type: config } : config;
+  const tool = supportedTools[config.type];
+  if (!tool) {
+    throw new Error(`Tool "${config.type}" ${config.name ? `(${config.name})` : ''} not supported`);
+  }
+  const nodeCtx: NodeToolContext = ctx as NodeToolContext;
+  
+  // If we're currently in a node step activity (as opposed to a tool call activity) — and unless the tool
+  // is configured to already execute in this node step (which is the less common of cases) — then we delete
+  // rather than pass the context into the tool factory function, which skips declaring the `execute` function.
+  let toolCtx: CallableToolContext | undefined = ctx as CallableToolContext;
+  if (isNodeStep && !tool.executeInNodeStep) toolCtx = undefined;
+
+  switch (tool.id) {
+    case 'generateImage':    return generateImageTool(toolCtx, config);
+    case 'extractUrlText':   return extractUrlTextTool(toolCtx, config);
+    case 'writeFile':        return writeFileTool(nodeCtx, config);
+    case 'readFile':         return readFileTool(nodeCtx, config);
+    case 'collectUserInput': return buildLLMToolDef(supportedTools[tool.id], config);
+    default: return undefined;
   }
 }
 
-// Used by tool factories to configure the schema of a tool based on the node tool config
-export function configureSchema(schema: Record<string, z.ZodType>, opts: NodeToolConfig | undefined): Record<string, z.ZodType> {
-  return Object.fromEntries(
-    Object.entries(schema)
-      .filter(([key]) => !opts?.input?.[key])
-      .map(([key, paramSchema]) => opts?.default?.[key] ? [key, paramSchema.default(opts?.default?.[key])] : [key, paramSchema])
-  )
+// Add node-specific tools to the available tools
+export function getNodeTools(
+  ctx: NodeToolContext | CallableToolContext, 
+  { isNodeStep, extraTools }: { isNodeStep: boolean, extraTools?: string[] }
+): Record<string, LLMTool> {
+  const nodeTools: Record<string, LLMTool> = (ctx.input.node.tools || []).concat(extraTools || [])
+    .reduce((nodeTools, config: string | NodeToolConfig) => {
+      const nodeTool: LLMTool | undefined = getConfiguredTool(config, ctx, { isNodeStep });
+      if (nodeTool) {
+        let toolName = formatToolName(config, false);
+        if (nodeTools[toolName]) toolName = formatToolName(config, true);
+        if (nodeTools[toolName]) throw new Error(`Tool "${toolName}" already defined`);
+        nodeTools[toolName] = nodeTool;
+      }
+      return nodeTools;
+    }, {} as Record<string, LLMTool>);
+  return {
+    ...nodeTools,
+    resolveOutput: resolveOutputTool(ctx as NodeToolContext), // resolveOutput is always a node-specific tool
+  };
+}
+
+
+
+
+export function prepareToolInput(input: any, opts: NodeToolConfig | undefined, ctx: NodeToolContext | CallableToolContext): any {
+  const merged = { ...input }
+  for (const [key, { value }] of Object.entries(opts?.settings || {})) {
+    if (typeof value === 'string') {
+      merged[key] = evaluateTemplate(value, ctx.input);
+    } else if (value !== undefined) {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+export function buildLLMToolDef(tool: Tool, config: NodeToolConfig | string | undefined): LLMTool {
+  const settingsConfig: NodeToolConfig['settings'] = typeof config === 'string' ? undefined : config?.settings;
+  const settingsSchema: ToolSettingsSchema = buildToolSettingsSchema(tool, config);
+  const required: string[] = (settingsSchema?.required || []) as string[];
+  const inputSchema = z.object(Object.fromEntries(
+    Object.entries(settingsSchema.properties ?? {})
+      // Only include settings that are not given and that don't have dependent settings
+      .filter(([key]) => settingsConfig?.[key]?.value === undefined && !tool.dependentSettings?.[key])
+      .map(([key, paramSchema]) => {
+        let zodSchema = zodFromSchema(paramSchema);
+        const defaultVal = settingsConfig?.[key]?.default
+        if (defaultVal) {
+          zodSchema = zodSchema.default(defaultVal);
+        }
+        if (!required.includes(key)) {
+          zodSchema = zodSchema.optional();
+        }
+        return [key, zodSchema];
+      })
+  ));
+  const description = typeof config === 'string' || config?.description === undefined ? tool.description : config?.description;
+  return { description, inputSchema };
 }

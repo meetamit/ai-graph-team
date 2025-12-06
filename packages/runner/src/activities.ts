@@ -5,7 +5,7 @@ import {
 } from 'ai';
 import { Node, NodeModelConfig, Edge, Transcript, FileRef } from './types';
 import { evaluateTemplate } from './cel';
-import { getNodeTools, getCallableTools } from './tools';
+import { getNodeTools } from './tools';
 
 export type Activities = ReturnType<typeof createActivities>;
 
@@ -75,19 +75,17 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
         model = configuredModel as LanguageModel;
       }
 
-      // Resolve the list of active tools for the node
-      const activeTools: Set<string> = new Set(input.node.tools?.map(t => typeof t === 'string' ? t : t.name) || []);
-      activeTools.add('resolveOutput');
-      if (input.node.type === 'input') {
-        activeTools.add('collectUserInput');
-      }
-
       // Make the LLM call
       const result = await generateText({
         model, ...generationArgs,
         messages: input.transcript,
-        tools: getNodeTools({ input, files }),
-        activeTools: Array.from(activeTools),
+        tools: getNodeTools(
+          { input, files }, 
+          {
+            extraTools: input.node.type === 'input' ? ['collectUserInput'] : [],
+            isNodeStep: true,
+          }
+        ),
         toolChoice: 'required',
       });
 
@@ -103,13 +101,7 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
         const role: ModelMessage['role'] = c.type === 'tool-result' ? 'tool' : 'assistant';
         const message = messages.find(m => m.role === role);
         if (c.type === 'tool-result') {
-          c = {
-            ...c, 
-            output: {
-              type: 'json',
-              value: c.output,
-            },
-          }
+          c = { ...c, output: { type: 'json', value: c.output } };
         }
         if (message) {
           (message.content as Array<TextPart | ToolCallPart | ToolResultPart>).push(c);
@@ -178,28 +170,22 @@ export function createActivities(deps: ActivitiesDependencies = {}) {
 
   async function makeToolCall(input: ToolCallInput): Promise<ToolCallResult> {
     if (deps.toolCallImpl) { return await deps.toolCallImpl(input); }
-
     const files: FileRef[] = []; // Keep track of files created during this step
-
-    // Clone the tools object and add input-specific execute function
-    const callableTools = getCallableTools({ input, files, dependencies: deps });
-
-
-    // Call the tool
     const toolName = input.toolCall.toolName;
-    const toolDef: Tool = callableTools[toolName];
+    const toolDef: Tool | undefined = getNodeTools(
+      { input, files, dependencies: deps },
+      { isNodeStep: false }
+    )[toolName];
     let value: any;
     if (toolDef && toolDef.execute) {
-      value = await (toolDef.execute as any)(input.toolCall.input);
+      value = await (toolDef.execute as any)(input.toolCall.input); // Call the tool
     }
-    if (!value) {
-      throw new Error(`Unimplemented tool call "${input.toolCall.toolName}"`);
-    }
+    if (!value) throw new Error(`Unimplemented tool call "${toolName}"`);
     return {
       files,
       toolResult: {
         type: 'tool-result',
-        toolName: input.toolCall.toolName,
+        toolName: toolName,
         toolCallId: input.toolCall.toolCallId,
         output: { type: 'json', value } as any,
       },

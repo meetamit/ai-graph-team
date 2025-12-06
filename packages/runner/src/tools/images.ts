@@ -1,42 +1,45 @@
-import { z } from 'zod';
+import { z, toJSONSchema } from 'zod';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { tool, Tool, experimental_generateImage as generateImage, ImageModel } from 'ai';
 import { NodeToolConfig, FileRef } from '../types';
-import { prepareToolInput, configureSchema, type CallableToolContext } from './index';
+import { supportedToolsById } from '@ai-graph-team/llm-tools';
+import { supportedImageModels, type ImageProvider } from '@ai-graph-team/llm-providers';
+import { prepareToolInput, buildLLMToolDef, type CallableToolContext } from './index';
+
+/** Look up the provider for a given image model name */
+function getImageProvider(modelName: string): ImageProvider | undefined {
+  return supportedImageModels.find(m => m.name === modelName)?.provider;
+}
 
 export function generateImageTool(ctx: CallableToolContext | undefined, opts: NodeToolConfig | undefined): Tool {
-  const def = {
-    description: 'Generate an image using AI based on a text prompt',
-    inputSchema: z.object(configureSchema({
-      prompt: z.string().describe('A detailed description of the image to generate'),
-      filename: z.string().describe('The user-facing name of the image file').default('generated-image.png'),
-      size: z.string().describe('The size of the generated image').default('1024x1024'),
-      style: z.enum(['vivid', 'natural']).describe('The style of the image: vivid (hyper-real and dramatic) or natural (more natural, less hyper-real)').default('vivid'),
-      quality: z.enum(['standard', 'hd']).describe('The quality of the image').default('standard'),
-    }, opts))
-  };
+  const def = buildLLMToolDef(supportedToolsById.generateImage, opts);
   if (!ctx) { return tool(def); }
-  
   return tool({
     ...def,
-    execute: async (input) => {
-      const { prompt, filename, size, style, quality } = prepareToolInput(input, opts, ctx);
-      const imageModel = typeof ctx.dependencies.imageModel === 'function' 
-        ? ctx.dependencies.imageModel(ctx.input.imageModelKind || 'ai') 
-        : ctx.dependencies.imageModel;
-      if (!imageModel) {
-        throw new Error(`Could not resolve image model for node ${ctx.input.node.id}`);
+    execute: async (args) => {
+      const { dependencies, input } = ctx;
+      const { prompt, filename, size, style, quality, steps, model: modelName } = prepareToolInput(args, opts, ctx);
+
+      const model: ImageModel | undefined = typeof dependencies.imageModel === 'function' 
+        ? dependencies.imageModel(input.imageModelKind || 'ai', modelName || 'stable-diffusion-2-free') 
+        : dependencies.imageModel;
+
+      if (!model) {
+        throw new Error(`Could not resolve image model for node ${input.node.id}`);
       }
-      
+
+      const provider = getImageProvider(modelName);
+
       const fileRef = await generateAndSaveImage(
-        ctx.input.runId,
-        ctx.input.node.id,
+        input.runId,
+        input.node.id,
         prompt,
         filename,
-        { model: imageModel, size, style, quality }
+        { model, provider, size, style, quality, steps }
       );  
+
       ctx.files.push(fileRef);
       return fileRef;
     }
@@ -55,10 +58,32 @@ const SAFE = /[^a-zA-Z0-9._-]/g;
 
 export type ImageGenerationOptions = {
   model: ImageModel;
-  size?: '1024x1024' | '1792x1024' | '1024x1792';
+  provider?: ImageProvider;
+  // Common
+  size?: string;
+  // OpenAI (DALL-E) specific
   style?: 'vivid' | 'natural';
   quality?: 'standard' | 'hd';
+  // Stable Diffusion specific
+  steps?: number;
 };
+
+/** Build provider-specific options for generateImage */
+function buildProviderOptions(
+  provider: ImageProvider | undefined,
+  options: Pick<ImageGenerationOptions, 'style' | 'quality' | 'steps'>
+) {
+  const { style, quality, steps } = options;
+  
+  switch (provider) {
+    case 'openai':
+      return { openai: { style: style ?? 'vivid', quality: quality ?? 'hd' } };
+    case 'stable-diffusion-webui':
+      return { webui: { steps: steps ?? 20 } };
+    default:
+      return {};
+  }
+}
 
 export async function generateAndSaveImage(
   runId: string,
@@ -69,10 +94,16 @@ export async function generateAndSaveImage(
 ): Promise<FileRef> {
   const {
     model,
-    size = '1024x1024',
-    style = 'vivid',
-    quality = 'hd',
+    provider,
+    size,
+    style,
+    quality,
+    steps,
   } = options;
+
+  // Default size based on provider
+  const defaultSize = provider === 'stable-diffusion-webui' ? '512x512' : '1024x1024';
+  const resolvedSize = size ?? defaultSize;
 
   const id = randomUUID();
   const safeName = filenameHint.replaceAll(SAFE, '_');
@@ -80,10 +111,14 @@ export async function generateAndSaveImage(
   const filename = `${id}__${safeName}`;
   const full = path.join(dir, filename);
 
+  // Build provider-specific options
+  const providerOptions = buildProviderOptions(provider, { style, quality, steps });
+
   // Generate the image
   const { image, providerMetadata, warnings } = await generateImage({
-    prompt, size, model,
-    providerOptions: { openai: { style, quality } },
+    model, prompt,
+    size: resolvedSize as '1024x1024' | '1792x1024' | '1024x1792',
+    providerOptions: providerOptions as Parameters<typeof generateImage>[0]['providerOptions'],
     abortSignal: AbortSignal.timeout(120_000),
   });
 
@@ -108,10 +143,15 @@ export async function generateAndSaveImage(
     metadata: {
       prompt,
       model,
-      size,
-      style,
-      quality,
-      revisedPrompt: (providerMetadata?.openai?.images?.[0] as any)?.revisedPrompt,
+      provider,
+      size: resolvedSize,
+      // Provider-specific options stored for reference
+      ...(provider === 'openai' && { style, quality }),
+      ...(provider === 'stable-diffusion-webui' && { steps }),
+      // OpenAI may return a revised prompt
+      ...(providerMetadata?.openai?.images?.[0] && {
+        revisedPrompt: (providerMetadata.openai.images[0] as any)?.revisedPrompt,
+      }),
       warnings,
     },
   };
