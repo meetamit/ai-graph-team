@@ -18,9 +18,14 @@ export class GraphPage {
   }
   async runWithTestModel(model: string) {
     await this.page.route('**/api/graph/*/run', async (route, request) => {
-      await route.continue({
-        headers: { ...(await request.allHeaders()), 'X-Test-Model': model },
-      });
+      // Only add test model header for POST requests (running the graph)
+      if (request.method() === 'POST') {
+        await route.continue({
+          headers: { ...(await request.allHeaders()), 'X-Test-Model': model },
+        });
+      } else {
+        await route.continue();
+      }
     });
   }
   async captureNewGraphData(): Promise<Graph> {
@@ -54,14 +59,14 @@ export class GraphPage {
   async submitGraph() {
     await this.getSubmitButton().click();
   }
-  async deleteGraph(title: string) {
+  async deleteGraph() {
     this.page.once('dialog', async dialog => {
       await dialog.accept();
     });
     await this.getDeleteButton().click();
   }
 
-  async runGraph(title: string) {
+  async runGraph() {
     await this.getRunButton().click();
   }
   async expectNodeStatuses(expected: any, timeout = 10_000): Promise<void> {
@@ -146,5 +151,41 @@ export class GraphPage {
 
   async cancelInputForm(): Promise<void> {
     await this.page.locator('[data-testid="graph-input-form"] button[type="button"]').click();
+  }
+
+  // Text editor methods for modifying graph JSON
+  async openTextEditor(): Promise<void> {
+    const button = this.page.getByRole('button', { name: 'Edit as Text' });
+    // Check if text editor is already open by looking for the editor
+    const editor = this.page.locator('.cm-editor .cm-content[contenteditable="true"]');
+    if (!(await editor.isVisible())) {
+      await button.click();
+      await expect(editor).toBeVisible();
+    }
+  }
+
+  async updateGraphViaTextEditor(graphData: GraphJSON): Promise<void> {
+    const editor = this.page.locator('.cm-editor .cm-content[contenteditable="true"]');
+    await expect(editor).toBeVisible();
+
+    await editor.click();
+    // Select all and replace with new JSON
+    await this.page.keyboard.press('ControlOrMeta+a');
+    const json = JSON.stringify(graphData);
+    // Input JSON via paste (ctrl+v), because it seems to be 1000x faster than either of the commented out methods:
+    //     await editor.pressSequentially(json, { delay: 0 });
+    //     await this.page.keyboard.type(json);
+    await this.page.evaluate((json: string) => navigator.clipboard.writeText(json), json);
+    await this.page.keyboard.press('ControlOrMeta+v');
+  }
+
+  async waitForGraphSave(): Promise<void> {
+    // Wait for the save button to show "Saving..." and then back to "Save"
+    const saveButton = this.page.getByRole('button', { name: 'Save' });
+    // Give a moment for the debounce to trigger the save
+    await this.page.waitForTimeout(500);
+    // Wait for any "Saving..." state to complete
+    await expect(saveButton).not.toHaveText('Saving...', { timeout: 5000 });
+    await this.page.waitForTimeout(500);
   }
 }

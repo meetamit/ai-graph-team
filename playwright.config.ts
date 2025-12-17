@@ -38,9 +38,9 @@ export default defineConfig({
   },
 
   /* Configure global timeout for each test */
-  timeout: 30 * 1000, // 30 seconds
+  timeout: 20 * 1000, // 20 seconds
   expect: {
-    timeout: 30 * 1000,
+    timeout: 20 * 1000,
   },
 
   /* Configure projects */
@@ -59,7 +59,7 @@ export default defineConfig({
     },
     {
       name: 'graph',
-      testMatch: /graph.test.ts/,
+      testMatch: /graph\.test\.ts/,
       dependencies: ['setup:auth'],
       use: {
         ...devices['Desktop Chrome'],
@@ -77,6 +77,19 @@ export default defineConfig({
            *   });
            * });`
            */
+          'X-Test-Model': 'test',
+          'X-Test-ImageModel': 'test',
+        },    
+      },
+    },
+    {
+      name: 'graph-multiple-runs',
+      testMatch: /graph-multiple-runs\.test\.ts/,
+      dependencies: ['setup:auth'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/session.json',
+        extraHTTPHeaders: {
           'X-Test-Model': 'test',
           'X-Test-ImageModel': 'test',
         },    

@@ -132,6 +132,15 @@ export async function getLatestGraphRun({ id }: { id: string }): Promise<GraphRu
   }
 }
 
+export async function getGraphRunsByGraphId({ graphId }: { graphId: string }): Promise<GraphRun[]> {
+  try {
+    return await db.select().from(graphRun).where(eq(graphRun.graphId, graphId)).orderBy(desc(graphRun.createdAt));
+  } catch (error) {
+    console.error('Failed to get graph runs by graph id from database');
+    throw error;
+  }
+}
+
 export async function updateGraphRun(
   { id, patch }: { 
     id: string, 

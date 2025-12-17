@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { EditIcon } from "lucide-react";
-import { Graph } from "@/lib/db/schema";
+import { Graph, GraphRun } from "@/lib/db/schema";
 import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graph-schema";
 import { GRAPH_TEMPLATES } from "@/lib/templates";
 import { useGraph } from "@/hooks/use-graph";
@@ -13,7 +13,7 @@ import InputFormModal from "./input-form-modal";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-export default function EditGraph({ graph }: { graph: Graph }) {
+export default function EditGraph({ graph, initialRun }: { graph: Graph; initialRun?: GraphRun }) {
   // Ensure the graph data has the proper structure with layouts
   const graphData = graph.data as GraphJSON;
   if (!graphData.layouts) {
@@ -29,7 +29,7 @@ export default function EditGraph({ graph }: { graph: Graph }) {
     title, setTitle, data, setData, saving, deleting, error, creating,
     nodeStatuses, nodeOutputs,
     saveGraph, saveGraphDebounced, deleteGraph, runGraph,
-  } = useGraph(graph);
+  } = useGraph(graph, initialRun);
 
   const [isTextEditorOpen, setIsTextEditorOpen] = useState(false);
   const [isInputFormOpen, setIsInputFormOpen] = useState(false);

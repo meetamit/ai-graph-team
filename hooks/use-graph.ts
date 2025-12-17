@@ -29,19 +29,25 @@ const debounce = (func: (...args: any[]) => void, wait: number) => {
   };
 };
 
-export function useGraph(graph: Graph) {
+export function useGraph(graph: Graph, initialRun?: GraphRun) {
   const router = useRouter();
   const [title, setTitle] = useState(graph.title);
   const [data, setData] = useState<GraphJSON>(graph.data as GraphJSON);
   const [neededInput, setNeededInput] = useState<NeededInput[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [run, setRun] = useState<GraphRun | null>(null);
+  const [run, setRun] = useState<GraphRun | null>(initialRun ?? null);
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
-  const [transcripts, setTranscripts] = useState<Array<[NodeId, GraphNodeMessage[]]>>([]);
+  const [transcripts, setTranscripts] = useState<Array<[NodeId, GraphNodeMessage[]]>>(
+    initialRun?.transcripts as Array<[NodeId, GraphNodeMessage[]]> ?? []
+  );
   const [error, setError] = useState<string | null>(null);
-  const [nodeStatuses, setNodeStatuses] = useState<NodeStatuses>({});
-  const [nodeOutputs, setNodeOutputs] = useState<Record<NodeId, any>>({});
+  const [nodeStatuses, setNodeStatuses] = useState<NodeStatuses>(
+    initialRun?.statuses as NodeStatuses ?? {}
+  );
+  const [nodeOutputs, setNodeOutputs] = useState<Record<NodeId, any>>(
+    initialRun?.outputs as Record<NodeId, any> ?? {}
+  );
   const creating = graph.id === '';
 
   const saveGraph = useCallback(async (savedData: GraphJSON = data, savedTitle: string = title) => {
@@ -121,7 +127,7 @@ export function useGraph(graph: Graph) {
   }
 
   const updateRun = async () => {
-    const eventSource = new EventSource(`/api/graph/${graph.id}/run`);
+    const eventSource = new EventSource(`/api/graph/${graph.id}/run/latest`);
     
     onGraphRunEvent(eventSource, 'status', (status: GraphRunStatusEvent['payload']) => {
       console.log('STATUS', status);
@@ -173,12 +179,12 @@ export function useGraph(graph: Graph) {
   }
 
   useEffect(() => {
-    if (creating) {
+    if (creating || initialRun) {
       return;
     } else if (!run) {
       updateRun();
     }
-  }, [run, creating]);
+  }, [run, creating, initialRun]);
 
   return useMemo(() => ({
     neededInput, submitNeededInput, 

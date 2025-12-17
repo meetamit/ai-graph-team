@@ -10,6 +10,7 @@ const CreateSchema = z.object({
   data: GraphSchema,
 });
 
+// Gets all existing graphs for a user
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session || !session.user || !session.user.id) {
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(graphs);
 }
 
+// Creates a new graph for a user
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session || !session.user || !session.user.id) {
