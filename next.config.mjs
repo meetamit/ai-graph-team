@@ -2,6 +2,7 @@
 const nextConfig = {
   experimental: {
     reactCompiler: true,
+    authInterrupts: true,
   },
   typescript: {
     ignoreBuildErrors: false,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notFound, unauthorized } from "next/navigation";
 import { z } from "zod";
 
 import { auth } from "@/app/(auth)/auth";
@@ -14,26 +15,19 @@ const UpdateSchema = z.object({
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
 
   const { id } = await params;
   const graph: Graph | null = await getGraphById({ id });
-  if (!graph) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  if (graph.ownerId !== session.user.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  if (!graph) notFound();
+  if (graph.ownerId !== session.user.id) return unauthorized();
 
   return NextResponse.json(graph);
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
   
   const body = await req.json();
   const parsed = UpdateSchema.safeParse(body);
@@ -47,18 +41,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const { id } = await params;
   const [updated] = await updateGraph({ id, ownerId: session.user.id, patch });
-  if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!updated) notFound();
   return NextResponse.json(updated);
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
 
   const { id } = await params;
   const [deleted] = await deleteGraph({ id, ownerId: session.user.id });
-  if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!deleted) notFound();
   return NextResponse.json({ ok: true });
 }

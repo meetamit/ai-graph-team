@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { notFound } from "next/navigation";
 import { createReadStream, statSync } from 'fs';
 import { headers } from 'next/headers';
 import path from 'path';
@@ -12,7 +13,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const file = await getFileRefById({ id });
-  if (!file) return new Response('Not found', { status: 404 });
+  if (!file) notFound();
 
   if (!file.uri.startsWith('file://')) {
     return new Response('Unsupported storage', { status: 501 });

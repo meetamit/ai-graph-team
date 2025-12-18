@@ -1,11 +1,10 @@
+import { unauthorized } from "next/navigation";
 import { auth } from '@/app/(auth)/auth'; 
 import { getGraphsByUserId } from '@/lib/db/queries';
 
 export default async function GraphListPage() {
   const session = await auth();
-  if (!session || !session.user) {
-    return Response.json('Unauthorized!', { status: 401 });
-  }
+  if (!session || !session.user) return unauthorized();
 
   const graphs = await getGraphsByUserId({ id: session.user.id! });
   return (

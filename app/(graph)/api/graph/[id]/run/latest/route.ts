@@ -1,5 +1,6 @@
 import { TransformStream } from 'stream/web';
 import { NextRequest, NextResponse } from "next/server";
+import { unauthorized } from "next/navigation";
 
 import { auth } from "@/app/(auth)/auth";
 import { getLatestGraphRun, updateGraphRun, createFileRef } from "@/lib/db/queries";
@@ -24,9 +25,7 @@ const graphRunMask = { statuses: undefined, transcripts: undefined, outputs: und
 // Stream events for the latest graph run
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
 
   const { id } = await params;
   const graphRun = await getLatestGraphRun({ id });

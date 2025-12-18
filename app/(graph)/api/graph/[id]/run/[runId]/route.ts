@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notFound, unauthorized } from "next/navigation";
 
 import { auth } from "@/app/(auth)/auth";
 import { getGraphById, getGraphRunById } from "@/lib/db/queries";
@@ -9,25 +10,16 @@ export async function GET(
   { params }: { params: { id: string; runId: string } }
 ) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
 
   const { id: graphId, runId } = await params;
 
   const graph = await getGraphById({ id: graphId });
-  if (!graph) {
-    return new NextResponse('Graph not found', { status: 404 });
-  }
-
-  if (graph.ownerId !== session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!graph) notFound();
+  if (graph.ownerId !== session.user.id) return unauthorized();
 
   const graphRun = await getGraphRunById({ id: runId });
-  if (!graphRun || graphRun.graphId !== graphId) {
-    return new NextResponse('Graph run not found', { status: 404 });
-  }
+  if (!graphRun || graphRun.graphId !== graphId) notFound();
 
   return NextResponse.json(graphRun, { status: 200 });
 }

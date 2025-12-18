@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notFound, unauthorized } from "next/navigation";
 
 import { auth } from "@/app/(auth)/auth";
 import { getGraphById, getGraphRunById, getGraphRunsByGraphId, createGraphRun } from "@/lib/db/queries";
@@ -19,20 +20,13 @@ const runner: GraphWorkflowClient = new GraphWorkflowClient({
 // Get all graph runs for a graph
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
 
   const { id: graphId } = await params;
 
   const graph = await getGraphById({ id: graphId });
-  if (!graph) {
-    return new NextResponse('Graph not found', { status: 404 });
-  }
-
-  if (graph.ownerId !== session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!graph) notFound();
+  if (graph.ownerId !== session.user.id) return unauthorized();
 
   const graphRuns = await getGraphRunsByGraphId({ graphId });
   return NextResponse.json(graphRuns, { status: 200 });
@@ -41,9 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 // Run a graph
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
 
   const { id: graphId } = await params;
   const body = await request.json().catch(() => ({}));
@@ -61,13 +53,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
   
   const graph = await getGraphById({ id: graphId });
-  if (!graph) {
-    return new NextResponse('Graph not found', { status: 404 });
-  }
-
-  if (graph.ownerId !== session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!graph) notFound();
+  if (graph.ownerId !== session.user.id) return unauthorized();
 
   const workflowId = `team-run-${graph.id}-${Date.now()}`;
   const { description: { runId } } = await runner.startWorkflow({ 
@@ -97,17 +84,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 // Submit needed input for a graph run
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  if (!session || !session.user || !session.user.id) return unauthorized();
 
   const { id: graphId } = await params;
   const { runId, inputs } = await request.json() as { runId: string, inputs: ProvidedInput[] };
 
   const graphRun = await getGraphRunById({ id: runId });
-  if (!graphRun || graphRun.graphId !== graphId) {
-    return new NextResponse('Graph run not found', { status: 404 });
-  }
+  if (!graphRun || graphRun.graphId !== graphId) notFound();
 
   await runner.provideInput(graphRun.workflowId, inputs);
   return NextResponse.json({ success: true }, { status: 200 });
