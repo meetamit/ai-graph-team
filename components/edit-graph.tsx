@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { EditIcon } from "lucide-react";
 import { Graph, GraphRun } from "@/lib/db/schema";
 import type { GraphJSON, GraphNodeMessageGroup } from "@/lib/graph-schema";
+import type { GraphCapabilities } from "@/lib/graph-policy";
 import { GRAPH_TEMPLATES } from "@/lib/templates";
 import { useGraph } from "@/hooks/use-graph";
 import GraphTextEditor from "./graph-text-editor";
@@ -13,7 +14,16 @@ import InputFormModal from "./input-form-modal";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-export default function EditGraph({ graph, initialRun }: { graph: Graph; initialRun?: GraphRun }) {
+type EditGraphProps = {
+  graph: Graph;
+  initialRun?: GraphRun;
+  capabilities?: GraphCapabilities;
+};
+
+export default function EditGraph({ graph, initialRun, capabilities }: EditGraphProps) {
+  // Default to full access if capabilities not provided (backward compatibility)
+  const canEdit = capabilities?.canEdit ?? true;
+  const canRun = capabilities?.canRun ?? true;
   // Ensure the graph data has the proper structure with layouts
   const graphData = graph.data as GraphJSON;
   if (!graphData.layouts) {
@@ -94,31 +104,36 @@ export default function EditGraph({ graph, initialRun }: { graph: Graph; initial
             placeholder="Title"
             onChange={handleTitleChange}
             className="w-64"
+            disabled={!canEdit}
           />
-          <select
-            onChange={handleTemplateSelect}
-            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 cursor-pointer"
-            defaultValue=""
-          >
-            <option value="" disabled>Load Template...</option>
-            {GRAPH_TEMPLATES.map(template => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
-            ))}
-          </select>
+          {canEdit && (
+            <select
+              onChange={handleTemplateSelect}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 cursor-pointer"
+              defaultValue=""
+            >
+              <option value="" disabled>Load Template...</option>
+              {GRAPH_TEMPLATES.map(template => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
-          <Button
-            disabled={saving || !title}
-            onClick={handleSave}
-            size="sm"
-          >
-            {saving ? "Saving..." : creating ? "Create Graph" : "Save"}
-          </Button>
+          {canEdit && (
+            <Button
+              disabled={saving || !title}
+              onClick={handleSave}
+              size="sm"
+            >
+              {saving ? "Saving..." : creating ? "Create Graph" : "Save"}
+            </Button>
+          )}
 
-          {!creating && (
+          {canEdit && !creating && (
             <Button
               variant="destructive"
               disabled={deleting}
@@ -129,7 +144,7 @@ export default function EditGraph({ graph, initialRun }: { graph: Graph; initial
             </Button>
           )}
 
-          {!creating && (
+          {canRun && !creating && (
             <Button
               onClick={() => runGraph()}
               size="sm"
@@ -142,7 +157,7 @@ export default function EditGraph({ graph, initialRun }: { graph: Graph; initial
 
       <div className="flex-1 relative">
         <div className="absolute inset-0 flex">
-          {isTextEditorOpen && <div className="flex-grow flex-shrink min-w-[50%] max-w-2xl h-full border-r">
+          {canEdit && isTextEditorOpen && <div className="flex-grow flex-shrink min-w-[50%] max-w-2xl h-full border-r">
             <GraphTextEditor 
               initialValue={data} 
               onChange={handleChange}
@@ -156,29 +171,32 @@ export default function EditGraph({ graph, initialRun }: { graph: Graph; initial
               onSelectNode={setSelectedNode}
               nodeStatuses={nodeStatuses}
               nodeOutputs={nodeOutputs}
+              readOnly={!canEdit}
             />
           </div>
-          <div className="absolute bottom-4 left-16 z-10">
-            <Button
-              variant={isTextEditorOpen ? "default" : "outline"}
-              size="sm"
-              onClick={event => {
-                event.preventDefault();
-                setIsTextEditorOpen(!isTextEditorOpen);
-              }}
-              className="flex items-center gap-2"
-            >
-              <EditIcon size={16} />
-              Edit as Text
-            </Button>
-          </div>
+          {canEdit && (
+            <div className="absolute bottom-4 left-16 z-10">
+              <Button
+                variant={isTextEditorOpen ? "default" : "outline"}
+                size="sm"
+                onClick={event => {
+                  event.preventDefault();
+                  setIsTextEditorOpen(!isTextEditorOpen);
+                }}
+                className="flex items-center gap-2"
+              >
+                <EditIcon size={16} />
+                Edit as Text
+              </Button>
+            </div>
+          )}
         </div>
 
         {selectedNode && <NodeSidebar 
           messageGroups={selectedNodeMessages}
           selectedNode={selectedNode}
-          onNodeChange={handleNodeChange}
-          runGraph={creating ? undefined : runGraph}
+          onNodeChange={canEdit ? handleNodeChange : undefined}
+          runGraph={canRun && !creating ? runGraph : undefined}
           graphData={data}
           nodeStatuses={nodeStatuses}
         />}

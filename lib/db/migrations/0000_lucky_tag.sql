@@ -1,8 +1,17 @@
+DO $$ BEGIN
+ CREATE TYPE "public"."graph_visibility" AS ENUM('private', 'unlisted', 'listed');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "graph" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"owner_id" uuid,
 	"title" varchar(256) NOT NULL,
 	"data" jsonb NOT NULL,
+	"visibility" "graph_visibility" DEFAULT 'private' NOT NULL,
+	"public_view_enabled" boolean DEFAULT false NOT NULL,
+	"public_run_enabled" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -22,8 +31,15 @@ CREATE TABLE IF NOT EXISTS "graph_run" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."user_role" AS ENUM('admin');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "user" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"role" "user_role",
 	"email" varchar(64) NOT NULL,
 	"password" varchar(64)
 );

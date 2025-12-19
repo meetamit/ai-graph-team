@@ -11,6 +11,7 @@ import {
   NodeStatuses, FileRef,
 } from '@ai-graph-team/runner';
 import { GraphJSON, GraphNodeMessage } from "@/lib/graph-schema";
+import { getGraphCapabilities } from "@/lib/graph-policy";
 
 const runner: GraphWorkflowClient = new GraphWorkflowClient({
   taskQueue: 'graph-queue',
@@ -20,13 +21,15 @@ const runner: GraphWorkflowClient = new GraphWorkflowClient({
 // Get all graph runs for a graph
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) return unauthorized();
+  if (!session?.user?.id) return unauthorized();
 
   const { id: graphId } = await params;
 
   const graph = await getGraphById({ id: graphId });
   if (!graph) notFound();
-  if (graph.ownerId !== session.user.id) return unauthorized();
+
+  const { canView } = getGraphCapabilities({ user: session.user, graph });
+  if (!canView) return unauthorized();
 
   const graphRuns = await getGraphRunsByGraphId({ graphId });
   return NextResponse.json(graphRuns, { status: 200 });
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 // Run a graph
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) return unauthorized();
+  if (!session?.user?.id) return unauthorized();
 
   const { id: graphId } = await params;
   const body = await request.json().catch(() => ({}));
@@ -54,7 +57,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   
   const graph = await getGraphById({ id: graphId });
   if (!graph) notFound();
-  if (graph.ownerId !== session.user.id) return unauthorized();
+
+  const { canRun } = getGraphCapabilities({ user: session.user, graph });
+  if (!canRun) return unauthorized();
 
   const workflowId = `team-run-${graph.id}-${Date.now()}`;
   const { description: { runId } } = await runner.startWorkflow({ 
@@ -84,10 +89,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 // Submit needed input for a graph run
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) return unauthorized();
+  if (!session?.user?.id) return unauthorized();
 
   const { id: graphId } = await params;
   const { runId, inputs } = await request.json() as { runId: string, inputs: ProvidedInput[] };
+
+  const graph = await getGraphById({ id: graphId });
+  if (!graph) notFound();
+
+  const { canRun } = getGraphCapabilities({ user: session.user, graph });
+  if (!canRun) return unauthorized();
 
   const graphRun = await getGraphRunById({ id: runId });
   if (!graphRun || graphRun.graphId !== graphId) notFound();

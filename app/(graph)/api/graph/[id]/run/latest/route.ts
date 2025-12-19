@@ -1,9 +1,9 @@
 import { TransformStream } from 'stream/web';
 import { NextRequest, NextResponse } from "next/server";
-import { unauthorized } from "next/navigation";
+import { notFound, unauthorized } from "next/navigation";
 
 import { auth } from "@/app/(auth)/auth";
-import { getLatestGraphRun, updateGraphRun, createFileRef } from "@/lib/db/queries";
+import { getGraphById, getLatestGraphRun, updateGraphRun, createFileRef } from "@/lib/db/queries";
 import {
   GraphWorkflowClient, 
   NodeId,
@@ -14,6 +14,7 @@ import {
   GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, 
   GraphRunNeededInputEvent, GraphRunErrorEvent, GraphRunTranscriptEvent, GraphRunFilesEvent
 } from "@/lib/graph-schema";
+import { getGraphCapabilities } from "@/lib/graph-policy";
 
 const runner: GraphWorkflowClient = new GraphWorkflowClient({
   taskQueue: 'graph-queue',
@@ -25,9 +26,16 @@ const graphRunMask = { statuses: undefined, transcripts: undefined, outputs: und
 // Stream events for the latest graph run
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session || !session.user || !session.user.id) return unauthorized();
+  if (!session?.user?.id) return unauthorized();
 
   const { id } = await params;
+
+  const graph = await getGraphById({ id });
+  if (!graph) notFound();
+
+  const { canView } = getGraphCapabilities({ user: session.user, graph });
+  if (!canView) return unauthorized();
+
   const graphRun = await getLatestGraphRun({ id });
 
   const responseStream = new TransformStream();

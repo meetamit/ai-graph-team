@@ -1,10 +1,15 @@
 import type { InferSelectModel } from 'drizzle-orm';
-import { pgTable, varchar, uuid, text, timestamp, jsonb, bigint } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, varchar, uuid, text, timestamp, jsonb, bigint, boolean } from 'drizzle-orm/pg-core';
+
+// Enums
+export const userRoleEnum = pgEnum('user_role', ['admin']);
+export const graphVisibilityEnum = pgEnum('graph_visibility', ['private', 'unlisted', 'listed']);
 
 export const user = pgTable('user', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   email: varchar('email', { length: 64 }).notNull(),
   password: varchar('password', { length: 64 }),
+  role: userRoleEnum('role'), // null = normal user, 'admin' = admin
 });
 
 export const graph = pgTable('graph', {
@@ -12,6 +17,9 @@ export const graph = pgTable('graph', {
   ownerId: uuid('owner_id').references(() => user.id), 
   title: varchar('title', { length: 256 }).notNull(),
   data: jsonb('data').notNull(), // { nodes: [...], edges: [...] }
+  visibility: graphVisibilityEnum('visibility').notNull().default('private'),
+  publicViewEnabled: boolean('public_view_enabled').notNull().default(false),
+  publicRunEnabled: boolean('public_run_enabled').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

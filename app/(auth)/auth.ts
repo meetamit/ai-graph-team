@@ -6,8 +6,12 @@ import { getUser } from '@/lib/db/queries';
 
 import { authConfig } from './auth.config';
 
+interface ExtendedUser extends User {
+  role: 'admin' | null;
+}
+
 interface ExtendedSession extends Session {
-  user: User;
+  user: ExtendedUser;
 }
 
 export const {
@@ -34,6 +38,7 @@ export const {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = (user as any).role ?? null;
       }
 
       return token;
@@ -47,6 +52,7 @@ export const {
     }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.role = token.role as 'admin' | null;
       }
 
       return session;

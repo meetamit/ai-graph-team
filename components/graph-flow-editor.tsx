@@ -16,6 +16,7 @@ type Props = {
   onSelectNode?: (node: Node) => void;
   nodeStatuses?: Record<string, string>;
   nodeOutputs?: Record<string, any>;
+  readOnly?: boolean;
 };
 
 type ReactFlowGraphJSON = {
@@ -82,7 +83,7 @@ function fromReactFlow(rfGraph: ReactFlowGraphJSON): GraphJSON {
   };
 }
 
-function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, nodeOutputs }: Props) {
+function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, nodeOutputs, readOnly }: Props) {
   const [graph, setGraph] = useState<ReactFlowGraphJSON>(toReactFlow(initialValue, nodeStatuses, nodeOutputs));
   const [isDragging, setIsDragging] = useState(false);
 
@@ -119,6 +120,9 @@ function GraphFlowEditor({ initialValue, onChange, onSelectNode, nodeStatuses, n
       onNodeDragStart={handleNodeDragStart}
       onNodeDragStop={handleNodeDragStop}
       nodeTypes={nodeTypes}
+      nodesDraggable={!readOnly}
+      nodesConnectable={!readOnly}
+      elementsSelectable={true}
     >
       <Background gap={15} size={1.5} />
     </ReactFlow>

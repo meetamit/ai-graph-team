@@ -2,6 +2,7 @@ import { notFound, unauthorized } from "next/navigation";
 
 import { auth } from "@/app/(auth)/auth";
 import { getGraphById, getGraphRunById } from "@/lib/db/queries";
+import { getGraphCapabilities } from "@/lib/graph-policy";
 import EditGraph from "@/components/edit-graph";
 import { Graph } from "@/lib/db/schema";
 import { GraphJSON } from "@/lib/graph-schema";
@@ -12,13 +13,15 @@ export default async function ViewGraphRunPage({
   params: { id: string; runId: string } 
 }) {
   const session = await auth();
-  if (!session || !session.user) return unauthorized();
+  if (!session?.user?.id) return unauthorized();
 
   const { id: graphId, runId } = await params;
 
   const graph = await getGraphById({ id: graphId });
   if (!graph) notFound();
-  if (graph.ownerId !== session.user.id) return unauthorized();
+
+  const capabilities = getGraphCapabilities({ user: session.user, graph });
+  if (!capabilities.canView) return unauthorized();
 
   const run = await getGraphRunById({ id: runId });
   if (!run || run.graphId !== graphId) {
@@ -34,7 +37,7 @@ export default async function ViewGraphRunPage({
 
   return (
     <section className="">
-      <EditGraph graph={graphFromRun} initialRun={run} />
+      <EditGraph graph={graphFromRun} initialRun={run} capabilities={capabilities} />
     </section>
   );
 }

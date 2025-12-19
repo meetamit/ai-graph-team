@@ -69,9 +69,7 @@ export default function SchemaEditor({ value, onChange, className }: Props) {
           dropCursor: false,
           allowMultipleSelections: false,
           indentOnInput: true,
-          bracketMatching: true,
           closeBrackets: true,
-          autocompletion: true,
           highlightSelectionMatches: false
         }}
       />

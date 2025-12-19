@@ -125,6 +125,28 @@
           "primaryKey": false,
           "notNull": true
         },
+        "visibility": {
+          "name": "visibility",
+          "type": "graph_visibility",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'private'"
+        },
+        "public_view_enabled": {
+          "name": "public_view_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "public_run_enabled": {
+          "name": "public_run_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -294,6 +316,13 @@
           "type": "varchar(64)",
           "primaryKey": false,
           "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -302,7 +331,24 @@
       "uniqueConstraints": {}
     }
   },
-  "enums": {},
+  "enums": {
+    "public.graph_visibility": {
+      "name": "graph_visibility",
+      "schema": "public",
+      "values": [
+        "private",
+        "unlisted",
+        "listed"
+      ]
+    },
+    "public.user_role": {
+      "name": "user_role",
+      "schema": "public",
+      "values": [
+        "admin"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "_meta": {
