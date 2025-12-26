@@ -60,10 +60,22 @@ export class GraphPage {
     await this.getSubmitButton().click();
   }
   async deleteGraph() {
-    this.page.once('dialog', async dialog => {
-      await dialog.accept();
-    });
-    await this.getDeleteButton().click();
+    // Wait for the delete button to be visible and enabled before proceeding
+    const deleteButton = this.getDeleteButton();
+    await expect(deleteButton).toBeVisible();
+    await expect(deleteButton).toBeEnabled();
+    
+    // Set up dialog handler before clicking
+    const dialogPromise = this.page.waitForEvent('dialog').then(dialog => dialog.accept());
+    await deleteButton.click();
+    // Wait for dialog to be accepted
+    await dialogPromise;
+    // Wait for the DELETE API call to complete
+    await this.page.waitForResponse((response) =>
+      response.url().includes('/api/graph') && response.request().method() === 'DELETE',
+    );
+    // Wait for navigation to complete
+    await this.page.waitForURL('/graph');
   }
 
   async runGraph() {
@@ -94,10 +106,25 @@ export class GraphPage {
     await this.page.goto('/graph')
   }
   async isGraphListed(title: string) {
-    await expect(this.getListedGraphLink(title)).toBeVisible();
+    // Check that the graph is in the active list (not in the deleted section)
+    // Active graphs are in the first ul (inside div.mt-4)
+    const activeList = this.page.locator('section div.mt-4 ul').first();
+    const graphLink = activeList.getByRole('link', { name: title, exact: true });
+    await expect(graphLink).toBeVisible();
   }
   async isGraphNotListed(title: string) {
-    await expect(this.getListedGraphLink(title)).not.toBeVisible();
+    // Check that the graph is not in the active list (it may be in the deleted section)
+    // Active graphs are in the first ul (inside div.mt-4)
+    const activeList = this.page.locator('section div.mt-4 ul').first();
+    const graphLink = activeList.getByRole('link', { name: title, exact: true });
+    await expect(graphLink).not.toBeVisible();
+  }
+  async isGraphInDeletedSection(title: string) {
+    // Check that the graph is in the deleted section
+    // Deleted graphs are in the ul inside div.mt-8 (which contains the "Deleted" heading)
+    const deletedList = this.page.locator('section div.mt-8 ul').first();
+    const graphLink = deletedList.getByRole('link', { name: title, exact: true });
+    await expect(graphLink).toBeVisible();
   }
   async loadListedGraph(title: string) {
     await this.getListedGraphLink(title).click();

@@ -22,6 +22,8 @@ export const graph = pgTable('graph', {
   publicRunEnabled: boolean('public_run_enabled').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
+  deletedByUserId: uuid('deleted_by_user_id').references(() => user.id),
 });
 
 export const graphRun = pgTable('graph_run', {

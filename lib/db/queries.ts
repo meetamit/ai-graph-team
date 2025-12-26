@@ -94,9 +94,19 @@ export async function updateGraph({ id, ownerId, patch }: { id: string, ownerId:
   }
 }
 
-export async function deleteGraph({ id, ownerId }: { id: string, ownerId: string }) {
+export async function deleteGraph({ id, ownerId, deletedByUserId }: { id: string, ownerId: string, deletedByUserId: string }) {
   try {
-    return await db.delete(graph).where(and(eq(graph.id, id), eq(graph.ownerId, ownerId))).returning();
+    // Check if already deleted - if so, return success (idempotent)
+    const existing = await getGraphById({ id });
+    if (existing?.deletedAt) {
+      return [existing];
+    }
+    
+    // Soft delete (UPDATE instead of DELETE)
+    return await db.update(graph)
+      .set({ deletedAt: new Date(), deletedByUserId, updatedAt: new Date(), })
+      .where(and(eq(graph.id, id), eq(graph.ownerId, ownerId)))
+      .returning();
   } catch (error) {
     console.error('Failed to delete graph in database');
     throw error;

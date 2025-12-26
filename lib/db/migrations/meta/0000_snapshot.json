@@ -160,6 +160,18 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_by_user_id": {
+          "name": "deleted_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -170,6 +182,19 @@
           "tableTo": "user",
           "columnsFrom": [
             "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "graph_deleted_by_user_id_user_id_fk": {
+          "name": "graph_deleted_by_user_id_user_id_fk",
+          "tableFrom": "graph",
+          "tableTo": "user",
+          "columnsFrom": [
+            "deleted_by_user_id"
           ],
           "columnsTo": [
             "id"

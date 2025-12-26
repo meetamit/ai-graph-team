@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS "graph" (
 	"public_run_enabled" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
+	"deleted_at" timestamp,
+	"deleted_by_user_id" uuid,
+	FOREIGN KEY ("deleted_by_user_id") REFERENCES "user"("id") ON DELETE no action ON UPDATE no action
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "graph_run" (
@@ -46,6 +49,11 @@ CREATE TABLE IF NOT EXISTS "user" (
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "graph" ADD CONSTRAINT "graph_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+ ALTER TABLE "graph" ADD CONSTRAINT "graph_deleted_by_user_id_user_id_fk" FOREIGN KEY ("deleted_by_user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

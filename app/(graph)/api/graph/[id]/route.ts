@@ -64,7 +64,7 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
   const { canEdit } = getGraphCapabilities({ user: session.user, graph });
   if (!canEdit) return unauthorized();
 
-  const [deleted] = await deleteGraph({ id, ownerId: graph.ownerId! });
+  const [deleted] = await deleteGraph({ id, ownerId: graph.ownerId!, deletedByUserId: session.user.id });
   if (!deleted) notFound();
   return NextResponse.json({ ok: true });
 }
