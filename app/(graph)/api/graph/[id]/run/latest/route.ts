@@ -4,11 +4,7 @@ import { notFound, unauthorized } from "next/navigation";
 
 import { auth } from "@/app/(auth)/auth";
 import { getGraphById, getLatestGraphRun, updateGraphRun, createFileRef } from "@/lib/db/queries";
-import {
-  GraphWorkflowClient, 
-  NodeId,
-  NodeStatuses, FileRef,
-} from '@ai-graph-team/runner';
+import { GraphWorkflowClient, NodeId, NodeStatuses, FileRef } from '@ai-graph-team/runner';
 import {
   GraphNodeMessage,
   GraphRunEvent, GraphRunStatusEvent, GraphRunNodeOutputEvent, GraphRunRecordEvent, 
@@ -71,8 +67,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           let files: Record<string, FileRef> = {};
           let statuses: NodeStatuses = {};
 
+          // Use fast polling (50ms) in test mode, otherwise use 500ms
+          const pollInterval = request.headers.get('X-Test-Fast-Polling') ? 50 : 500;
+
           let event: GraphRunStatusEvent | GraphRunNodeOutputEvent | GraphRunNeededInputEvent | GraphRunTranscriptEvent | GraphRunFilesEvent;
-          for await (event of runner.events(graphRun.workflowId)) {
+          for await (event of runner.events(graphRun.workflowId, pollInterval)) {
             if (event.type === 'transcript') {
               transcripts.push(...event.payload);
             } else if (event.type === 'output') {

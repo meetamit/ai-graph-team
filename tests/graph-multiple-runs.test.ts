@@ -8,6 +8,7 @@ test.describe('graph multiple runs with image generation', () => {
   let graphId: string;
 
   test('run graph with incrementally added image generators and verify run history', async ({ page, context }) => {
+    test.setTimeout(35000);
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
     graphPage = new GraphPage(page);

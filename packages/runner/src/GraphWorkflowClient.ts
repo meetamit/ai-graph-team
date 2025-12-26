@@ -36,6 +36,7 @@ export type GraphWorkflowClientOptions = {
   collectInput?: (neededInput: NeededInput[]) => Promise<ProvidedInput[]>;
   taskQueue?: string;
   idBase?: string;
+  pollIntervalMs?: number;
 };
 
 export class GraphWorkflowClient {
@@ -44,13 +45,14 @@ export class GraphWorkflowClient {
   private taskQueue: string;
   private idBase: string;
   private runningWorkflows: Set<WorkflowHandle>;
-
+  private pollIntervalMs: number;
   constructor(options: GraphWorkflowClientOptions) {
     this.connection = options.connection || undefined;
     this.collectInput = options.collectInput;
     this.taskQueue = options.taskQueue || 'graph-queue';
     this.idBase = options.idBase || 'run-graph-';
     this.runningWorkflows = new Set();
+    this.pollIntervalMs = options.pollIntervalMs || 500;
   }
 
   async getClient(): Promise<Client> {
@@ -129,7 +131,7 @@ export class GraphWorkflowClient {
     await handle.signal(receiveInput, inputs);
   }
 
-  async *events(workflowId: string): AsyncGenerator<GraphStatusEvent | GraphNeededInputEvent | GraphNodeOutputEvent | GraphTranscriptEvent | GraphFilesEvent> {
+  async *events(workflowId: string, pollIntervalMs = this.pollIntervalMs): AsyncGenerator<GraphStatusEvent | GraphNeededInputEvent | GraphNodeOutputEvent | GraphTranscriptEvent | GraphFilesEvent> {
     const client = await this.getClient();
     const handle: WorkflowHandle = await client.workflow.getHandle(workflowId);
     try {
@@ -192,7 +194,7 @@ export class GraphWorkflowClient {
         Object.values(lastStatus).includes('error')
       ) { break; }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
     }
   }
 

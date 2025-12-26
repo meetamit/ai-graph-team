@@ -79,6 +79,7 @@ export default defineConfig({
            */
           'X-Test-Model': 'test',
           'X-Test-ImageModel': 'test',
+          'X-Test-Fast-Polling': 'true',
         },    
       },
     },
@@ -92,6 +93,7 @@ export default defineConfig({
         extraHTTPHeaders: {
           'X-Test-Model': 'test',
           'X-Test-ImageModel': 'test',
+          'X-Test-Fast-Polling': 'true',
         },    
       },
     },

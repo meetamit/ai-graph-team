@@ -34,7 +34,7 @@ test.describe('graph activity', () => {
     graphPage.runWithTestModel('delayed');
     const testTitle = `Test Title 2 — ${format(new Date(), 'MM-dd-yyyy HH:mm:ss')}`;
     await graphPage.createNewGraph(testTitle);
-    await graphPage.runGraph(testTitle);
+    await graphPage.runGraph();
     await graphPage.expectNodeStatuses({
       user_input: 'awaiting',
       position_for: 'pending',
@@ -74,7 +74,7 @@ test.describe('graph activity', () => {
     const testTitle = `Test Title 3 — ${format(new Date(), 'MM-dd-yyyy HH:mm:ss')}`;
     await graphPage.createNewGraph(testTitle, PRESCRIPTIVE_GRAPH);
 
-    await graphPage.runGraph(testTitle);
+    await graphPage.runGraph();
     await graphPage.expectNodeStatuses({
       user_input: 'awaiting',
       position_for: 'pending',
@@ -100,7 +100,7 @@ test.describe('graph activity', () => {
     const testTitle = `Test Title 4 — ${format(new Date(), 'MM-dd-yyyy HH:mm:ss')}`;
     await graphPage.createNewGraph(testTitle, IMAGE_GRAPH);
 
-    await graphPage.runGraph(testTitle);
+    await graphPage.runGraph();
     await graphPage.expectNodeStatuses({
       user_input: 'awaiting',
       image_generator: 'pending',

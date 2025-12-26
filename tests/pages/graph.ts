@@ -113,7 +113,7 @@ export class GraphPage {
     return this.page.getByRole('button', { name: 'Run' });
   }
   getListedGraphLink(title: string) {
-    return this.page.getByRole('link', { name: title });
+    return this.page.getByRole('link', { name: title, exact: true });
   }
 
   // Graph input form methods
