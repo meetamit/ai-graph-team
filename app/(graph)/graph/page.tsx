@@ -1,6 +1,7 @@
 import { unauthorized } from "next/navigation";
 import { auth } from '@/app/(auth)/auth'; 
 import { getGraphsByUserId } from '@/lib/db/queries';
+import { GraphListItem } from './graph-list-item';
 
 export default async function GraphListPage() {
   const session = await auth();
@@ -23,10 +24,7 @@ export default async function GraphListPage() {
         <div className="mt-4">
           <ul className="space-y-2">
             {activeGraphs.map(r => (
-              <li key={r.id}>
-                <a className="underline" href={`/graph/${r.id}`}>{r.title}</a>
-                <span className="text-sm text-gray-500 ml-2">{new Date(r.createdAt).toLocaleString()}</span>
-              </li>
+              <GraphListItem key={r.id} graph={r} />
             ))}
           </ul>
         </div>
@@ -37,11 +35,8 @@ export default async function GraphListPage() {
           <h2 className="text-lg font-semibold text-gray-500 mb-2">Deleted</h2>
           <ul className="space-y-2">
             {deletedGraphs.map(r => (
-              <li key={r.id}>
-              <a className="underline" href={`/graph/${r.id}`}>{r.title}</a>
-              <span className="text-sm text-gray-500 ml-2">{new Date(r.createdAt).toLocaleString()}</span>
-            </li>
-          ))}
+              <GraphListItem key={r.id} graph={r} />
+            ))}
           </ul>
         </div>
       )}

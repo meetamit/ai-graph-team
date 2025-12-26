@@ -128,6 +128,46 @@ export class GraphPage {
   }
   async loadListedGraph(title: string) {
     await this.getListedGraphLink(title).click();
+    // Wait for the graph page to load by waiting for a key element
+    await this.page.waitForURL(/\/graph\/[^/]+$/);
+    // Wait for the delete button to be ready (visible and enabled)
+    const deleteButton = this.getDeleteButton();
+    await expect(deleteButton).toBeVisible();
+  }
+
+  async cloneGraph(originalTitle: string, cloneTitle?: string): Promise<Graph> {
+    // Find the link with exact title match, then get its parent li row
+    const link = this.page.getByRole('link', { name: originalTitle, exact: true });
+    const graphRow = link.locator('xpath=ancestor::li'); // Get parent li element
+    await graphRow.hover();
+    
+    // Click the clone button (it should be visible on hover)
+    const cloneButton = graphRow.locator('button[title="Clone graph"]');
+    await expect(cloneButton).toBeVisible();
+    await cloneButton.click();
+    
+    // Wait for dialog to appear
+    const dialog = this.page.locator('[data-slot="dialog-content"]');
+    await expect(dialog).toBeVisible();
+    
+    // Update clone title if provided
+    if (cloneTitle) {
+      const input = dialog.getByPlaceholder('Graph title');
+      await input.clear();
+      await input.fill(cloneTitle);
+    }
+    
+    // Click clone button in dialog
+    const cloneDialogButton = dialog.getByRole('button', { name: 'Clone' });
+    await cloneDialogButton.click();
+    
+    // Wait for navigation to the cloned graph
+    const response = await this.page.waitForResponse((response) =>
+      response.url().includes('/api/graph') && response.request().method() === 'POST',
+    );
+    const clonedGraph = await response.json() as Graph;
+    await this.page.waitForURL(`/graph/${clonedGraph.id}`);
+    return clonedGraph;
   }
 
   getSubmitButton() {

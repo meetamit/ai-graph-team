@@ -113,6 +113,71 @@ export async function deleteGraph({ id, ownerId, deletedByUserId }: { id: string
   }
 }
 
+export async function cloneGraph({ id, ownerId, title }: { id: string, ownerId: string, title: string }): Promise<Graph[]> {
+  try {
+    const originalGraph = await getGraphById({ id });
+    if (!originalGraph) {
+      throw new Error('Graph not found');
+    }
+    if (originalGraph.ownerId !== ownerId) {
+      throw new Error('Unauthorized');
+    }
+    const [clonedGraph] = await db.insert(graph).values({ 
+      title, 
+      data: originalGraph.data, 
+      ownerId,
+      visibility: originalGraph.visibility,
+      publicViewEnabled: originalGraph.publicViewEnabled,
+      publicRunEnabled: originalGraph.publicRunEnabled,
+    }).returning();
+
+    // Clone the latest GraphRun if it exists
+    const latestRun = await getLatestGraphRun({ id });
+    if (latestRun) {
+      await cloneGraphRun({ 
+        originalRun: latestRun, 
+        newGraphId: clonedGraph.id,
+        ownerId 
+      });
+    }
+
+    return [clonedGraph];
+  } catch (error) {
+    console.error('Failed to clone graph in database');
+    throw error;
+  }
+}
+
+export async function cloneGraphRun({ 
+  originalRun, 
+  newGraphId, 
+  ownerId 
+}: { 
+  originalRun: GraphRun; 
+  newGraphId: string; 
+  ownerId: string;
+}): Promise<GraphRun[]> {
+  try {
+    // Generate a new workflowId for the cloned run
+    const newWorkflowId = `team-run-${newGraphId}-${Date.now()}`;
+    
+    return await db.insert(graphRun).values({
+      graphId: newGraphId,
+      ownerId,
+      workflowId: newWorkflowId,
+      status: originalRun.status,
+      graph: originalRun.graph,
+      outputs: originalRun.outputs,
+      statuses: originalRun.statuses,
+      files: originalRun.files,
+      transcripts: originalRun.transcripts,
+    }).returning();
+  } catch (error) {
+    console.error('Failed to clone graph run in database');
+    throw error;
+  }
+}
+
 export async function createGraphRun({ id, graphId, ownerId, graph, workflowId }: { id: string, graphId: string, ownerId: string, graph: GraphJSON, workflowId: string }): Promise<GraphRun[]> {
   try {
     return await db.insert(graphRun).values({ id, graphId, ownerId, graph, workflowId }).returning();

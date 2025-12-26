@@ -24,10 +24,28 @@ test.describe('graph activity', () => {
     await page.waitForURL(graphUrl);
     await expect(page).toHaveURL(graphUrl);
 
-    await graphPage.deleteGraph(testTitle)
-    await page.waitForURL('/graph');
+    // Clone the graph
+    const clonedTitle = `${testTitle} (2)`;
+    await graphPage.listGraphs();
+    const clonedGraph = await graphPage.cloneGraph(testTitle);
+    await expect(page).toHaveURL(`/graph/${clonedGraph.id}`);
+    
+    // Verify cloned graph is listed
+    await graphPage.listGraphs();
+    await graphPage.isGraphListed(clonedTitle);
+    
+    // Delete both graphs
+    await graphPage.loadListedGraph(testTitle);
+    await graphPage.deleteGraph();
     await expect(page).toHaveURL('/graph');
-    await graphPage.isGraphNotListed(testTitle)
+    await graphPage.isGraphNotListed(testTitle);
+    await graphPage.isGraphInDeletedSection(testTitle);
+    
+    await graphPage.loadListedGraph(clonedTitle);
+    await graphPage.deleteGraph();
+    await expect(page).toHaveURL('/graph');
+    await graphPage.isGraphNotListed(clonedTitle);
+    await graphPage.isGraphInDeletedSection(clonedTitle);
   });
 
   test('create, run and reload a graph', async ({ page }) => {
