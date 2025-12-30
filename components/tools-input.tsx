@@ -3,7 +3,7 @@ import { useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   PlusIcon, TextCursorInputIcon, FilePenLineIcon, FileOutputIcon,
-  ImagePlusIcon, EditIcon, GlobeIcon, type LucideIcon
+  ImagePlusIcon, EditIcon, GlobeIcon, DownloadIcon, type LucideIcon
 } from "lucide-react";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
@@ -17,6 +17,7 @@ const ICONS: Record<string, LucideIcon> = {
   FileOutputIcon,
   ImagePlusIcon,
   GlobeIcon,
+  DownloadIcon,
 };
 
 export type ToolsInputProps = {

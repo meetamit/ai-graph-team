@@ -7,6 +7,7 @@ import { generateImageTool } from './images';
 import { writeFileTool, readFileTool } from './files';
 import { resolveOutputTool } from './resolve';
 import { extractUrlTextTool } from './web';
+import { fetchUrlTool } from './fetch';
 
 import { evaluateTemplate } from '../cel';
 import { buildToolSettingsSchema, zodFromSchema, type Tool, type ToolSettingsSchema } from '@ai-graph-team/llm-tools';
@@ -65,6 +66,7 @@ function getConfiguredTool(
   switch (tool.id) {
     case 'generateImage':    return generateImageTool(toolCtx, config);
     case 'extractUrlText':   return extractUrlTextTool(toolCtx, config);
+    case 'fetchUrl':         return fetchUrlTool(toolCtx, config);
     case 'writeFile':        return writeFileTool(nodeCtx, config);
     case 'readFile':         return readFileTool(nodeCtx, config);
     case 'collectUserInput': return buildLLMToolDef(supportedTools[tool.id], config);

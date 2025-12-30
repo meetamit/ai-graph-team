@@ -98,6 +98,13 @@ export const supportedTools: Tool[] = [
       format: z.enum(['markdown', 'text']).describe('The format of the extracted text').default('markdown').optional(),
     }
   },
+  { id: "fetchUrl", label: "Fetch URL", icon: "DownloadIcon",
+    description: 'Fetches data from a URL, supporting both JSON and plain text formats\nUse when: Node needs to retrieve raw data from an API endpoint or URL',
+    settings: {
+      url: z.string().describe('The URL to fetch data from'),
+      format: z.enum(['json', 'text']).describe('The expected format of the response: json (parsed JSON object) or text (plain text)').default('text').optional(),
+    }
+  },
 ];
 
 export const supportedToolsById: Record<string, Tool> = supportedTools.reduce((acc, tool) => {
