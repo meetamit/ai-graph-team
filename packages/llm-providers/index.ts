@@ -94,6 +94,7 @@ export const anthropicModels: Model[] = [
    category: 'claude-4.5',
    comment: 'latest Claude 4.5 family',
    models: [
+     { name: 'claude-opus-4-5-20251101',   comment: 'alias: claude-opus-4-5' },
      { name: 'claude-sonnet-4-5-20250929', comment: 'alias: claude-sonnet-4-5' }, // :contentReference[oaicite:20]{index=20}
      { name: 'claude-haiku-4-5-20251001',  comment: 'alias: claude-haiku-4-5' }, // :contentReference[oaicite:21]{index=21}
    ],

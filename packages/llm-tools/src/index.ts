@@ -43,7 +43,7 @@ export type ToolSettingsSchema = {
 
 export const supportedTools: Tool[] = [
   { id: "collectUserInput", label: "Collect User Input", icon: "TextCursorInputIcon",
-    description: 'Prompt the user for an input',
+    description: 'Prompts the user for additional information or clarification during execution\nUse when: Node needs to ask the user questions or gather additional input beyond the initial prompt',
     settings: {
       name: z.string().describe('The internal name of the input'),
       prompt: z.string().describe('The prompt to ask the user for the input'),
@@ -52,7 +52,7 @@ export const supportedTools: Tool[] = [
   },
   {
     id: "generateImage", label: "Generate Image", icon: "ImagePlusIcon",
-    description: 'Generate an image using AI based on a text prompt',
+    description: 'Generates images from text prompts using AI image generation models (DALL-E, Stable Diffusion, etc.)\nUse when: Node needs to create, generate, or produce images',
     settings: {
       model: z.enum(imageModels.map(model => model.name)).describe('The model to use for image generation').default('stable-diffusion-2-free'),
       prompt: z.string().describe('A detailed description of the image to generate'),
@@ -74,7 +74,7 @@ export const supportedTools: Tool[] = [
   },
   {
     id: "writeFile", label: "Write File", icon: "FilePenLineIcon",
-    description: 'Create a file',
+    description: 'Saves content to a file (text, SVG, HTML, etc.)\nUse when: Node needs to persist generated content as a file',
     executeInNodeStep: true,
     settings: {
       filename: z.string().describe('The user-facing name of the file'),
@@ -90,7 +90,7 @@ export const supportedTools: Tool[] = [
     }
   },
   { id: "extractUrlText", label: "Extract URL Text", icon: "GlobeIcon",
-    description: 'Extract text from a URL',
+    description: 'Fetches and extracts text content from web URLs\nUse when: Node needs to read, scrape, or extract content from websites or web pages',
     settings: {
       url: z.string().describe('The URL to extract text from'),
       include_images: z.boolean().describe('Include a list of images extracted from the URLs in the response').default(true).optional(),

@@ -98,7 +98,7 @@ describe('Graph tools', () => {
 
     expectToolNames(tools, ['generateImage', 'resolveOutput']);
     expectToolSchema(tools, 'generateImage', expect.objectContaining({
-      description: 'Generate an image using AI based on a text prompt',
+      description: 'Generates images from text prompts using AI image generation models (DALL-E, Stable Diffusion, etc.)\nUse when: Node needs to create, generate, or produce images',
       inputSchema: expect.objectContaining({
         type: 'object',
         properties: {
@@ -145,7 +145,7 @@ describe('Graph tools', () => {
 
     expectToolNames(tools, ['writeFile', 'resolveOutput']);
     expectToolSchema(tools, 'writeFile', expect.objectContaining({
-      description: 'Create a file',
+      description: 'Saves content to a file (text, SVG, HTML, etc.)\nUse when: Node needs to persist generated content as a file',
       inputSchema: expect.objectContaining({
         properties: {
           filename: { type: 'string', description: 'The user-facing name of the file' },
